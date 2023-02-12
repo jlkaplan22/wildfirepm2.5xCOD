@@ -1,6 +1,7 @@
 ## Project specific ignores
 **README.html
 code/secrets.R
+lit
 data_private/**
 !data_private/README.md
 
