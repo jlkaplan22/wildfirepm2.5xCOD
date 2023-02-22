@@ -19,6 +19,16 @@ library(fixest)
 library(tictoc)
 library(beepr)
 library(tmap)
+library(splines)
+
+
+library(tidylog)
+
+
+library(INLA) #likely won't actually be used since this is for Bayesian models from Chen et al.
+# following lines needed to install INLA for newer versions of R:
+# install.packages("INLA",
+#                  repos = "https://inla.r-inla-download.org/R/stable", dep = TRUE)
 
 # Set paths
 if(Sys.getenv("HOME") == "/Users/jordankaplan"){

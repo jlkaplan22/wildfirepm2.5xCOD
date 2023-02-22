@@ -55,10 +55,11 @@ PRISM <-
         temp,
         precip
     ) %>% 
-    dplyr::select(GEOID, year, month, temp, precip)
+    dplyr::select(GEOID, year, month, temp, precip) %>% 
+    mutate(month = as.numeric(month))
 
-write.csv(PRISM, "data/prism_monthly.csv")
+write.csv(PRISM, "data/prism_monthly.csv", row.names = FALSE)
 
-
+PRISM <- read_csv("data/prism_monthly.csv")
 
 

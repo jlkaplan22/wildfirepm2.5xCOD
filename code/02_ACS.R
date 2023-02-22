@@ -16,4 +16,6 @@ acs2009to2020 <- #should take ~136 sec
         loadACS_alt(2020, "acs5")
     )
 
-write.csv(acs2009to2020, "data/acs2009to2020.csv")
+write.csv(acs2009to2020, "data/acs2009to2020.csv", row.names = FALSE)
+
+acs2009to2020 <- read_csv("data/acs2009to2020.csv")

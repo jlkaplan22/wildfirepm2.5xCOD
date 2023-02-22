@@ -28,17 +28,17 @@ grid_10km <-
 
 # make a crosswalk with intersection area with grid cells
 
-unit_cross <- readRDS("county_xwalk")
+unit_cross <- readRDS("data/county_xwalk")
 
 sf_use_s2(FALSE)
-# unit_cross <-
+# county_cross <-
 #     st_intersection(counties_sf, grid_10km) %>%
 #     dplyr::select(GEOID, grid_id_10km = ID) %>%
 #     mutate(area=st_area(.)) %>%
 #     st_drop_geometry()
 
 # save the crosswalk since it takes a while to make 
-#saveRDS(unit_cross, "data/county_xwalk")
+#saveRDS(county_cross, "data/county_xwalk")
 
 # population by grid cell
 pop <-
@@ -49,20 +49,20 @@ pop <-
 smokePM <- readRDS("data_raw/smokePM_predictions_20060101_20201231.rds")
 
 # lets only save predictions if there's a smoke day in the unit, start by identifying smoke-days per unit
-unit_smoke_days <- 
+county_smoke_days <- 
     smokePM %>% # 51434138 rows
     # add unit information, this will duplicate any rows that are in multiple counties
-    left_join(unit_cross %>% dplyr::select(grid_id_10km, GEOID),
+    left_join(county_cross %>% dplyr::select(grid_id_10km, GEOID),
               by = "grid_id_10km") %>% # 76009188 rows for county 
     filter(!is.na(GEOID)) %>% # drop grid cells that don't match to a unit
     # full set of unit-days with smoke 
     dplyr::select(date, GEOID) %>% 
     distinct()  # 2308941 rows (should actually be less after dropping NAs)
 
-unit_smokePM <- 
-    unit_smoke_days %>%
+county_smokePM <- 
+    county_smoke_days %>%
     # join in all grid-cells for each unit
-    left_join(unit_cross, by = "GEOID") %>% # 119622779 rows
+    left_join(county_cross, by = "GEOID") %>% # 119622779 rows
     # join in population and smoke PM predictions
     left_join(pop %>% dplyr::select(grid_id_10km = ID, grid_pop_per_m2 = mean)) %>%
     left_join(smokePM) # should still be 119622779 rows
@@ -70,8 +70,8 @@ unit_smokePM <-
 
 # fill missings with 0s
 # calculate pop-weighted avg (density * area) over grid cells in each unit
-avg_unit_smokePM <- 
-    unit_smokePM %>% 
+avg_county_smokePM <- 
+    county_smokePM %>% 
     replace_na(list(smokePM_pred = 0)) %>%
     mutate(area = unclass(area), 
            pop = grid_pop_per_m2*area) %>%
@@ -80,12 +80,14 @@ avg_unit_smokePM <-
     ungroup
 
 #note--GEOID is county-specific
-saveRDS(avg_unit_smokePM, 
+saveRDS(avg_county_smokePM, 
         "data/county_smokePM_predictions_20060101_20201231.rds")
+
+avg_county_smokePM <- readRDS("data/county_smokePM_predictions_20060101_20201231.rds")
 
 # aggregate to monthly level and create thresholding features
 county_smokePM_features <-
-    avg_unit_smokePM %>% 
+    avg_county_smokePM %>% 
     mutate(year = year(date), month = month(date)) %>% 
     group_by(GEOID, year, month) %>% 
     summarise(

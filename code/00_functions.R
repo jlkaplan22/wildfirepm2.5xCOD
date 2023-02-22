@@ -272,3 +272,24 @@ loadACS_alt <- function(yr, svy) {
     return(us)
 }
 
+interpret_model <- function(model) {
+    sig_digits = 6
+    model <- mod1
+    wfpm2.5_beta = model$coefficients[1] %>% signif(digits = sig_digits)
+    beta_exp = exp(wfpm2.5_beta) %>% signif(digits = sig_digits)
+    
+    wfpm2.5_se = model$se[1] %>% signif(digits = sig_digits)
+    
+    CI_lower = exp(wfpm2.5_beta - 1.96 * wfpm2.5_se) %>% signif(digits = sig_digits)
+    CI_upper = exp(wfpm2.5_beta + 1.96 * wfpm2.5_se) %>% signif(digits = sig_digits)
+    
+    percent_change <- (beta_exp - 1) * 100 %>% signif(digits = sig_digits)
+    
+    return(
+        paste0(
+            "Point est = ", beta_exp,
+            " (", CI_lower, ", ", CI_upper, "), ",
+            "% change = ", percent_change
+        )
+    )
+}
