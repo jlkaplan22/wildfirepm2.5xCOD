@@ -1,6 +1,7 @@
 # Load libraries
 library(tidyverse)
 library(ggplot2)
+library(viridis)
 library(lubridate)
 library(stringr)
 library(sf)
@@ -38,7 +39,7 @@ if(Sys.getenv("HOME") == "/Users/jordankaplan"){
 }
 
 local_box_path = paste0(local_root_path, "wildfirepm2.5xCOD/")
-raw_data_dir = paste0(local_box_path, "raw_data/")
+raw_data_dir = paste0(local_box_path, "data_raw/")
 data_dir = paste0(local_box_path, "data/")
 
 # Census API key:

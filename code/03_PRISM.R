@@ -1,11 +1,11 @@
 #### Load and clean PRISM data ####
 
 # download PRISM temp data
-options(prism.path="data_raw/prism/temp")
+options(prism.path=paste0(raw_data_dir, "prism/temp"))
 get_prism_monthlys(type="tmean", years = 2006:2020, mon = seq(1:12), keepZip=FALSE)
 temp_stack <- pd_stack(prism_archive_ls())
 
-options(prism.path="data_raw/prism/precip")
+options(prism.path=paste0(raw_data_dir, "prism/precip"))
 get_prism_monthlys(type="ppt", years = 2006:2020, mon = seq(1:12), keepZip=FALSE)
 precip_stack <- pd_stack(prism_archive_ls())
 
@@ -58,8 +58,8 @@ PRISM <-
     dplyr::select(GEOID, year, month, temp, precip) %>% 
     mutate(month = as.numeric(month))
 
-write.csv(PRISM, "data/prism_monthly.csv", row.names = FALSE)
+write.csv(PRISM, paste0(data_dir, "prism_monthly.csv"), row.names = FALSE)
 
-PRISM <- read_csv("data/prism_monthly.csv")
+PRISM <- read_csv(paste0(data_dir, "prism_monthly.csv"))
 
 

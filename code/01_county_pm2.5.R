@@ -3,15 +3,6 @@
 # Aggregates 10 km grid smokePM predictions to county level.
 # ------------------------------------------------------------------------------
 
-#Read in 10km x 10km grid ==================================================================
-grid_10km_x_10km <- 
-    st_read("data_raw/10km_grid/10km_grid_wgs84/10km_grid_wgs84.shp")
-
-grid_10km_x_10km <- 
-    grid_10km_x_10km %>% 
-    mutate(.keep = c("none"), grid_geometry = geometry, gridcell_id = ID)
-st_geometry(grid_10km_x_10km) <- "grid_geometry"
-
 counties_sf <- 
     #counties(year = 2006) %>% #2006 not working right now, try again later
     counties(year = 2020) %>% 
@@ -23,12 +14,12 @@ counties_sf <-
 
 # read in the grid
 grid_10km <- 
-    st_read("data_raw/10km_grid/10km_grid_wgs84/10km_grid_wgs84.shp") %>%
+    st_read(paste0(raw_data_dir, "10km_grid/10km_grid_wgs84/10km_grid_wgs84.shp")) %>% 
     st_transform(st_crs(counties_sf))
 
 # make a crosswalk with intersection area with grid cells
 
-unit_cross <- readRDS("data/county_xwalk")
+county_cross <- readRDS("data/county_xwalk")
 
 sf_use_s2(FALSE)
 # county_cross <-
@@ -91,16 +82,14 @@ county_smokePM_features <-
     mutate(year = year(date), month = month(date)) %>% 
     group_by(GEOID, year, month) %>% 
     summarise(
-        mean_pm2.5 = mean(smokePM_pred),
         cum_pm2.5 = sum(smokePM_pred),
+        mean_pm2.5 = cum_pm2.5 / 30,
         daysover0 = sum(smokePM_pred > 0),
         daysover5 = sum(smokePM_pred > 5),
         daysover12.5 = sum(smokePM_pred > 12.5),
         daysover20 = sum(smokePM_pred > 20),
         daysover40 = sum(smokePM_pred > 40)
     )
-
-
 
 
 

@@ -1,7 +1,7 @@
 ---
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 ```{r setup, include=FALSE}
 knitr::opts_knit$set(root.dir = "/Users/jordankaplan/Documents/GitHub/wildfirepm2.5xCOD")
@@ -17,14 +17,12 @@ COD_raw <- readRDS("data_raw/age_standardized_rates/age_standardized_rates-count
 
 COD <- 
     COD_raw %>% 
-    filter(year >= 2006 & 
-               race_eth == "all" & 
-               age_group == "all_ages" & 
-               sex == "all" &
-               race_eth == "all") %>% 
-    group_by(fipsihme, year, month) %>% 
-    summarise(pop = sum(pop), n_deaths = sum(n_deaths), rate = n_deaths / pop) %>% 
-    ungroup()
+    filter(year >= 2006, 
+           race_eth == "all",
+           age_group == "all_ages",
+           sex == "all",
+           marital == "all",
+           death_type == "all_cause")
 
 fipsihme_sf <- 
     counties(year = 2020) %>% # year should be 2006 once those data are working again
@@ -106,6 +104,7 @@ Should match readily available data
 ### For some reason this code chunk is terminating R, I have no clue why
 # monthly_US_deaths <- 
 #     COD_sf %>% 
+#     st_drop_geometry() %>% 
 #     mutate(yearmonth = paste(year, month, sep="-")) %>% 
 #     mutate(yearmonth = ym(yearmonth)) %>% 
 #     group_by(yearmonth) %>% 
@@ -262,7 +261,9 @@ COD_ACS <-
 COD_ACS %>% 
     ggplot(aes(x = pop.x, y = pop.y)) +
     geom_point(size=.1) +
-    geom_abline(slope = 1, linewidth = .1)
+    geom_abline(slope = 1, linewidth = .1) +
+    ggtitle("ACS county population measures vs our COD population measures") +
+    xlab("Our pop") + ylab("ACS pop")
 
 
 ```
@@ -273,7 +274,9 @@ COD_ACS %>%
     filter(pop.y < .9 * pop.x | pop.y > 1.1 * pop.x) %>% 
     ggplot(aes(x = pop.x, y = pop.y)) +
     geom_point(size=.1) +
-    geom_abline(slope = 1, linewidth = .1)
+    geom_abline(slope = 1, linewidth = .1) +
+    ggtitle(">=10% difference: ACS county population vs our COD population") +
+    xlab("Our pop") + ylab("ACS pop")
 
 pop_mismatch <-
     COD_ACS %>% 
@@ -304,8 +307,6 @@ those seem to have gone away (good)
 ```{r}
 COD %>% 
     filter(n_deaths >= pop * .5)
-
-
 
 ```
 
