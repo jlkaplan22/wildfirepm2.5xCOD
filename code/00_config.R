@@ -31,9 +31,12 @@ library(INLA) #likely won't actually be used since this is for Bayesian models f
 # install.packages("INLA",
 #                  repos = "https://inla.r-inla-download.org/R/stable", dep = TRUE)
 
+library(pglm)
+library(poisFErobust) #testing this out, mayor may not end up using it
+
 # Set paths
 if(Sys.getenv("HOME") == "/Users/jordankaplan"){
-    local_root_path = "/Users/jordankaplan/Library/CloudStorage/Box-Box/"
+    local_root_path = "/Users/jordankaplan/Documents/"
 } else {
     local_root_path = ""
 }
