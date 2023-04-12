@@ -48,6 +48,8 @@ fig2_mod_outputs <-
         CI_upper_clustered = exp(mean_pm2.5 + qnorm(0.975) * se_county_cluster),
         CI_lower_iid = exp(mean_pm2.5 - qnorm(0.975) * se_iid),
         CI_upper_iid = exp(mean_pm2.5 + qnorm(0.975) * se_iid),
+        
+        preferred_mod = ifelse(model_number==26, 1, 0),
         .keep=("none")
     ) %>% 
     arrange(point_est) %>% 
@@ -154,15 +156,21 @@ modspecs_precip <-
             )
     )
 
-#Create figure 2
+#Create figure 2a
+low_coef_models <- c(3, 18, 33, 48, 63)
+
 coefs <-
     fig2_mod_outputs %>% 
+    filter(model_number %in% low_coef_models != TRUE) %>% 
     ggplot(aes(x = model_rank, y = point_est - 1)) + 
     geom_linerange(aes(ymin = CI_lower_clustered - 1, ymax = CI_upper_clustered - 1), lwd=.2) +
     geom_linerange(aes(ymin = CI_lower_iid - 1, ymax = CI_upper_iid - 1), lwd=.6, color = "cornflowerblue") +
     # scale_y_break(c(-.015, -.002)) +
     ylim(c(-.003, .005)) +
     geom_point(size=.5) +
+    geom_point(data = fig2_mod_outputs %>% filter(preferred_mod==1), 
+               aes(x=model_rank, y = point_est-1), 
+               color = "red", size = .5) +
     theme_minimal() +
     geom_hline(yintercept = 0, colour = DEFAULT_COLOR, lty = 2, size=0.25) + 
     # geom_hline(yintercept = -.015, colour = "red", lty = 2, size=0.25) + 
@@ -172,7 +180,8 @@ coefs <-
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank(),
-        plot.margin = unit(c(0,1,0,1), "cm")
+        plot.margin = unit(c(0,1,0,1), "cm"),
+        legend.position = "none"
     )
 
 
@@ -182,6 +191,7 @@ width <- .7
 
 model_fes <-
     modspecs_fes %>% 
+    filter(model_number %in% low_coef_models != TRUE) %>% 
     ggplot(aes(x = model_rank, y = as.factor(feature), fill = color)) + 
     geom_tile(color = "gray", height = height, width = width) +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
@@ -202,6 +212,7 @@ model_fes <-
 
 model_temp <-
     modspecs_temp %>% 
+    filter(model_number %in% low_coef_models != TRUE) %>% 
     ggplot(aes(x = model_rank, y = as.factor(feature), fill = value)) + 
     geom_tile(color = "gray", height = height, width = width) +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
@@ -221,6 +232,7 @@ model_temp <-
 
 model_precip <-
     modspecs_precip %>% 
+    filter(model_number %in% low_coef_models != TRUE) %>% 
     ggplot(aes(x = model_rank, y = as.factor(feature), fill = value)) + 
     geom_tile(color = "gray", height = height, width = width) +
     ggplot2::scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
@@ -238,9 +250,96 @@ model_precip <-
         plot.margin = unit(c(0,1,0,1), "cm")
     )
 
-fig2 <- coefs + model_fes + model_temp + model_precip + plot_layout(ncol = 1, heights = c(6,1,1,1))
+fig2a <- coefs + model_fes + model_temp + model_precip + plot_layout(ncol = 1, heights = c(6,1,1,1))
 
-ggsave(filename = "plots/fig2.png", plot = fig2, device = "png", dpi = 200, height = 5, width = 9)
+ggsave(filename = "plots/fig2a.png", plot = fig2a, device = "png", dpi = 200, height = 5, width = 9)
+
+#Fig 2b:
+coefs <-
+    fig2_mod_outputs %>% 
+    filter(model_number %in% low_coef_models) %>% 
+    ggplot(aes(x = model_rank, y = point_est - 1)) + 
+    geom_linerange(aes(ymin = CI_lower_clustered - 1, ymax = CI_upper_clustered - 1), lwd=.2) +
+    geom_linerange(aes(ymin = CI_lower_iid - 1, ymax = CI_upper_iid - 1), lwd=.6, color = "cornflowerblue") +
+    geom_point(size=.5) +
+    theme_minimal() +
+    geom_hline(yintercept = 0, colour = DEFAULT_COLOR, lty = 2, size=0.25) + 
+    # geom_hline(yintercept = -.015, colour = "red", lty = 2, size=0.25) + 
+    # geom_hline(yintercept = -.002, colour = "red", lty = 2, size=0.25) + 
+    theme(
+        panel.grid = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        plot.margin = unit(c(0,1,0,1), "cm"),
+        legend.position = "none"
+    )
+
+model_fes <-
+    modspecs_fes %>% 
+    filter(model_number %in% low_coef_models) %>% 
+    ggplot(aes(x = model_rank, y = as.factor(feature), fill = color)) + 
+    geom_tile(color = "gray", height = height, width = width) +
+    scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
+    scale_y_discrete(labels = c("County", "County*Cal. Month", "Year-Month", "Year")) +
+    theme_minimal() + 
+    #scale_fill_gradient(low = "white", high = "black") +
+    scale_fill_manual(values=c("white", "dodgerblue3", "coral2", "seagreen4")) +
+    ylab("Fixed effects") +
+    theme(
+        legend.position = "none",
+        panel.border = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 8),
+        panel.grid = element_blank(),
+        plot.margin = unit(c(0,1,0,1), "cm")
+    )
+
+model_temp <-
+    modspecs_temp %>% 
+    filter(model_number %in% low_coef_models) %>% 
+    ggplot(aes(x = model_rank, y = as.factor(feature), fill = value)) + 
+    geom_tile(color = "gray", height = height, width = width) +
+    scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
+    scale_y_discrete(labels = c("Linear, area-weighted", "Linear", "NS, df=3", "NS, df=5")) +
+    theme_minimal() + 
+    scale_fill_gradient(low = "white", high = "black") +
+    ylab("Temperature") +
+    theme(
+        legend.position = "none",
+        panel.border = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 8),
+        panel.grid = element_blank(),
+        plot.margin = unit(c(0,1,0,1), "cm")
+    )
+
+model_precip <-
+    modspecs_precip %>% 
+    filter(model_number %in% low_coef_models) %>% 
+    ggplot(aes(x = model_rank, y = as.factor(feature), fill = value)) + 
+    geom_tile(color = "gray", height = height, width = width) +
+    ggplot2::scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
+    scale_y_discrete(labels = c("Linear, area-weighted", "Linear", "NS, df=3", "NS, df=5")) +
+    theme_minimal() + 
+    scale_fill_gradient(low = "white", high = "black") +
+    ylab("Precipitation") +
+    ggplot2::theme(
+        legend.position = "none",
+        panel.border = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_blank(),
+        axis.title.x = ggplot2::element_blank(),
+        axis.title.y = element_text(size = 8),
+        panel.grid = ggplot2::element_blank(),
+        plot.margin = unit(c(0,1,0,1), "cm")
+    )
+
+fig2b <- coefs + model_fes + model_temp + model_precip + plot_layout(ncol = 1, heights = c(6,1,1,1))
+
+ggsave(filename = "plots/fig2a.png", plot = fig2a, device = "png", dpi = 200, height = 5, width = 9)
+
 
 #Supplementary figure with all three SE types
 S1_data <-
