@@ -1,0 +1,266 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "/Users/jordankaplan/Documents/GitHub/wildfirepm2.5xCOD")
+```
+
+## Exploratory Data Analysis for 2-18 COD data
+
+### Load settings and data
+```{r}
+source("code/00_config.R")
+
+COD_raw <- readRDS("data_raw/age_standardized_rates/age_standardized_rates-county_month-all_sex-all_marital-all_cause.RDS")
+
+COD <- 
+    COD_raw %>% 
+    filter(year >= 2006 & 
+               race_eth == "all" & 
+               age_group == "all_ages" & 
+               sex == "all" &
+               race_eth == "all") %>% 
+    group_by(fipsihme, year, month) %>% 
+    summarise(pop = sum(pop), n_deaths = sum(n_deaths), rate = n_deaths / pop) %>% 
+    ungroup()
+
+fipsihme_sf <- 
+    counties(year = 2020) %>% # year should be 2006 once those data are working again
+    filter(STATEFP %in% non_CONUS_FIPS == F) %>% 
+    dplyr::mutate(COUNTYFP = paste0(STATEFP, COUNTYFP)) %>% 
+    dplyr::select(COUNTYFP, NAME) %>% 
+    left_join(
+        ihme_fips %>% dplyr::select(COUNTYFP = orig_fips, ihme_fips),
+        by=c("COUNTYFP")
+    ) %>% 
+    mutate(
+        ihme_fips = ifelse(is.na(ihme_fips), COUNTYFP, ihme_fips)
+    ) %>% 
+    dplyr::select(fipsihme = ihme_fips, COUNTYFP, NAME)
+
+COD_sf <-
+    COD %>% 
+    left_join(
+        fipsihme_sf %>% dplyr::select(fipsihme, geometry)
+    ) %>% 
+    st_as_sf() #key step to recover sf geometry for some reason
+
+```
+
+
+### Maps:
+
+#### All-cause mortality rate by county for each year
+![map of death rate by county](plots/2-17-23_COD_EDA/monthly_US_deaths.jpg)
+```{r}
+acm_county_2010 <-
+    COD %>% 
+    group_by(fipsihme, year) %>% 
+    summarise(annual_rate = mean(rate)) %>% 
+    ungroup() %>% 
+    filter(year == 2010) %>% 
+    mutate(
+        annual_rate_bin = cut(annual_rate, breaks = quantile(annual_rate, seq(0, 1, .2)))
+    ) %>% 
+    left_join(
+        fipsihme_sf %>% dplyr::select(fipsihme, geometry)
+    ) %>% 
+    st_as_sf() %>% #key step to recover sf geometry for some reason
+    ggplot(aes(fill = annual_rate_bin)) +
+    geom_sf(color = NA) + #color=NA to remove county borders
+    scale_fill_brewer(palette = "Reds") +
+    ggtitle("Death rate by county")
+    
+
+#ggsave(filename = "plots/2-17-23_COD_EDA/2010_county_deathrates.jpg", plot = acm_county_2010, device = "jpeg", dpi = 200)
+beep()
+
+# library(tmap)
+# tmap_test <-
+#     COD %>% 
+#     group_by(fipsihme, year) %>% 
+#     summarise(annual_rate = mean(rate)) %>% 
+#     ungroup() %>% 
+#     filter(year == 2010) %>% 
+#     left_join(
+#         fipsihme_sf %>% dplyr::select(fipsihme, geometry)
+#     ) %>% 
+#     st_as_sf() #key step to recover sf geometry for some reason
+# 
+# tmap_test %>% 
+#     dplyr::filter(!sf::st_is_empty(geometry)) %>% 
+#     tm_shape() +
+#     tm_fill("annual_rate")
+# 
+# tmap_save(tmap_test, filename = "plots/tmap.jpg")
+
+```
+
+### Time series
+
+#### Whole US
+Should match readily available data
+![time series of county death rates for 2010](plots/2-17-23_COD_EDA/monthly_US_deaths.jpg)
+```{r}
+monthly_US_deaths <- 
+    COD_sf %>% 
+    mutate(yearmonth = paste(year, month, sep="-")) %>% 
+    mutate(yearmonth = ym(yearmonth)) %>% 
+    group_by(yearmonth) %>% 
+    summarise(n_deaths = sum(n_deaths), us_pop = sum(pop)) %>% 
+    ggplot(aes(x = yearmonth, y = n_deaths)) +
+    geom_line() +
+    ggtitle("Deaths by month in the US, 2006-2020") +
+    xlab("Year") + ylab("Total deaths")
+
+#ggsave(filename = "plots/2-17-23_COD_EDA/monthly_US_deaths.jpg", plot=monthly_US_deaths, device="jpg")
+
+```
+
+
+#### Time series of ACM rate and raw death counts for 10 largest counties
+```{r}
+largest_counties <-
+    COD %>% ungroup() %>% 
+    filter(year == 2010) %>% #could have chosen different year
+    dplyr::select(fipsihme, pop, year) %>% 
+    distinct() %>% 
+    arrange(desc(pop)) %>% 
+    slice(1:10) %>% 
+    left_join(
+        counties() %>% dplyr::select(GEOID, NAME),
+        by=c("fipsihme" = "GEOID")
+    ) %>% 
+    select(-c(pop, year)) %>% 
+    st_drop_geometry()
+
+monthly_deaths_largest_counties <- 
+    COD_sf %>% 
+    right_join(largest_counties) %>% 
+    mutate(yearmonth = paste(year, month, sep="-")) %>% 
+    mutate(yearmonth = ym(yearmonth)) %>% 
+    ggplot(aes(x = yearmonth, y = rate)) +
+    geom_line(aes(color = NAME))
+
+monthly_deaths_largest_counties +
+    ggtitle("Death rate in largest counties, 2006-2020") +
+    xlab("Year") + ylab("Death rate (per 100,000)")
+
+
+```
+```{r}
+# counties to look closely at
+large_counties = 
+    list("Los Angeles County" = "06037", 
+         "Harris County" = "48201",
+         "Miami-Dade County" = "12086",
+         "Cook County" = "17031", 
+         "New York County" = "36061", 
+         "San Francisco County" = "06075") 
+
+medium_counties = 
+    list("Jefferson County" = "01073", 
+         "Mecklenburg County" = "37119", 
+         "Lucas County" = "39095", 
+         "Fresno County" = "06019", 
+         "Boulder County" = "08013",
+         "East Baton Rouge Parish" = "22033")
+
+small_counties = 
+    list("Stearns County" = "27145",
+         "Pike County" = "01109",
+         "Clark County" = "18019",
+         "Steuben County" = "36101",
+         "Aroostook County" = "23003",
+         "Douglas County" = "41019")
+
+# Extract data from the lists above, make label for size category
+pull_county_data_by_size = function(size) {
+    COD %>% 
+        filter(fipsihme %in% unname(unlist(!!sym(glue::glue("{size}_counties"))))) %>% 
+        mutate(type = size)
+}
+
+county_specific_df <- lapply(c("small", "medium", "large"), pull_county_data_by_size) %>% bind_rows()
+
+
+```
+
+```{r}
+monthly_rates_largecounty <- 
+    county_specific_df %>% 
+    filter(type == "large") %>% 
+    left_join(
+        counties() %>% dplyr::select(GEOID, NAME),
+        by=c("fipsihme" = "GEOID")
+    ) %>% 
+    mutate(yearmonth = paste(year, month, sep="-")) %>% 
+    mutate(yearmonth = ym(yearmonth)) %>% 
+    ggplot(aes(x = yearmonth, y = rate)) +
+    geom_line(aes(color = NAME))
+
+monthly_rates_largecounty +
+    ggtitle("Death rate in select large counties, 2006-2020") +
+    xlab("Year") + ylab("Death rate (per 100,000)")
+
+```
+```{r}
+monthly_rates_mediumcounty <- 
+    county_specific_df %>% 
+    filter(type == "medium") %>% 
+    left_join(
+        counties() %>% dplyr::select(GEOID, NAME),
+        by=c("fipsihme" = "GEOID")
+    ) %>% 
+    mutate(yearmonth = paste(year, month, sep="-")) %>% 
+    mutate(yearmonth = ym(yearmonth)) %>% 
+    ggplot(aes(x = yearmonth, y = rate)) +
+    geom_line(aes(color = NAME))
+
+monthly_rates_mediumcounty +
+    ggtitle("Death rate in select medium counties, 2006-2020") +
+    xlab("Year") + ylab("Death rate (per 100,000)")
+```
+```{r}
+monthly_rates_smallcounty <- 
+    county_specific_df %>% 
+    filter(type == "small") %>% 
+    left_join(
+        counties() %>% dplyr::select(GEOID, NAME),
+        by=c("fipsihme" = "GEOID")
+    ) %>% 
+    mutate(yearmonth = paste(year, month, sep="-")) %>% 
+    mutate(yearmonth = ym(yearmonth)) %>% 
+    ggplot(aes(x = yearmonth, y = rate)) +
+    geom_line(aes(color = NAME))
+
+monthly_rates_smallcounty +
+    ggtitle("Death rate in select small counties, 2006-2020") +
+    xlab("Year") + ylab("Death rate (per 100,000)")
+```
+
+
+### Sanity checks
+
+#### Compare population counts to ACS5 counts
+```{r}
+COD %>% 
+    filter(year >= 2009) %>% 
+    left_join(
+        acs2009to2020,
+        by=c("fipsihme" = "GEOID", "year")
+    )
+
+```
+
+#### Counties where deaths > 50% of population
+```{r}
+
+```
+
+
+
+
+
