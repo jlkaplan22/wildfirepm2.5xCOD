@@ -31,16 +31,16 @@ county_smokePM_features <-
 
 #Load all-cause mortality data
 COD <- 
-    readRDS(paste0(raw_data_dir, "age_standardized_rates/age_standardized_rates-county_month-by_marital-all_cause.RDS")) %>% 
-    #readRDS(paste0(raw_data_dir, "age_standardized_rates/age_standardized_rates-county_month-all_sex-all_marital-all_cause.RDS")) %>% 
+    #readRDS(paste0(raw_data_dir, "age_standardized_rates/age_standardized_rates-county_month-by_marital-all_cause.RDS")) %>% 
+    readRDS(paste0(raw_data_dir, "age_standardized_rates/age_standardized_rates-county_month-all_sex-all_marital-all_cause.RDS")) %>% 
     mutate(statefips = str_sub(fipsihme, 1, 2)) %>% 
     filter(statefips %in% non_CONUS_FIPS == FALSE) %>%  
     filter(
-        year >= 2009,
+        year >= 2006,
         year <= 2020,
         race_eth == "all",
-        age_group == "15_and_up",
-        #age_group == "all_ages",
+        #age_group == "15_and_up",
+        age_group == "all_ages",
         marital == "all", 
         sex == "all",
         death_type == "all_cause"
@@ -72,7 +72,7 @@ final <-
         
         yearmonth = ym(paste(year, month, sep = "-"))
     ) %>% 
-    filter(yearmonth <= "2020-02-01", yearmonth >= "2009-01-01") #stop before COVID-19 pandemic
-    #filter(yearmonth <= "2020-02-01") #stop before COVID-19 pandemic
+    #filter(yearmonth <= "2020-02-01", yearmonth >= "2009-01-01") #stop before COVID-19 pandemic
+    filter(yearmonth <= "2020-02-01") #stop before COVID-19 pandemic
 
 
