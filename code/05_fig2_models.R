@@ -285,7 +285,7 @@ model_fes <-
     theme_minimal() + 
     #scale_fill_gradient(low = "white", high = "black") +
     scale_fill_manual(values=c("white", "dodgerblue3", "coral2", "seagreen4")) +
-    ylab("Fixed effects") +
+    ylab("FEs") +
     theme(
         legend.position = "none",
         panel.border = element_blank(),
@@ -305,7 +305,7 @@ model_temp <-
     scale_y_discrete(labels = c("Linear, area-weighted", "Linear", "NS, df=3", "NS, df=5")) +
     theme_minimal() + 
     scale_fill_gradient(low = "white", high = "black") +
-    ylab("Temperature") +
+    ylab("Temp") +
     theme(
         legend.position = "none",
         panel.border = element_blank(),
@@ -325,7 +325,7 @@ model_precip <-
     scale_y_discrete(labels = c("Linear, area-weighted", "Linear", "NS, df=3", "NS, df=5")) +
     theme_minimal() + 
     scale_fill_gradient(low = "white", high = "black") +
-    ylab("Precipitation") +
+    ylab("Precip") +
     ggplot2::theme(
         legend.position = "none",
         panel.border = ggplot2::element_blank(),

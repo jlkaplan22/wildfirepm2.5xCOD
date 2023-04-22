@@ -1,6 +1,10 @@
 # Load libraries
 library(tidyverse)
 library(ggplot2)
+library(ggbreak)
+library(patchwork)
+library(gt)
+library(webshot2)
 library(viridis)
 library(lubridate)
 library(stringr)
@@ -24,15 +28,6 @@ library(splines)
 
 
 library(tidylog)
-
-
-library(INLA) #likely won't actually be used since this is for Bayesian models from Chen et al.
-# following lines needed to install INLA for newer versions of R:
-# install.packages("INLA",
-#                  repos = "https://inla.r-inla-download.org/R/stable", dep = TRUE)
-
-library(pglm)
-library(poisFErobust) #testing this out, mayor may not end up using it
 
 # Set paths
 if(Sys.getenv("HOME") == "/Users/jordankaplan"){
@@ -61,3 +56,22 @@ fipsihme <- load(file="data/ihme_fips.rda")
 # Load functions
 source("code/00_functions.R")
 
+# Plot preferences for the forest plot (from Jeff's 2022 SEDA paper)
+DEFAULT_COLOR = "#737373"
+LINE_COLOR <- "#528fad"
+base_theme <- 
+    theme_classic(base_size = 15) + 
+    theme(
+        panel.spacing = unit(1, "lines"),
+        axis.title.x = element_text(color=DEFAULT_COLOR),
+        axis.title.y = element_text(color=DEFAULT_COLOR),
+        axis.line = element_line(color=DEFAULT_COLOR, size=0.25),
+        axis.text.x = element_text(color=DEFAULT_COLOR), 
+        axis.text.y = element_text(color=DEFAULT_COLOR),
+        axis.ticks = element_line(color=DEFAULT_COLOR, size=0.25), 
+        legend.text = element_text(color=DEFAULT_COLOR),
+        legend.title = element_text(color=DEFAULT_COLOR),
+        plot.subtitle = element_text(color=DEFAULT_COLOR),
+        strip.background = element_rect(color=DEFAULT_COLOR, fill=NA, size=0.5),
+        strip.text = element_text(color=DEFAULT_COLOR)
+    )

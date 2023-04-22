@@ -128,19 +128,18 @@ time_series_data <-
 pm2.5_timeseries <-
     time_series_data %>% 
     ggplot(aes(x = yearmonth, y = mean_pm2.5)) +
-    geom_line(linewidth = .5) +
-    #scale_x_continuous(breaks = c(seq(2006, 2019, 2)), labels=c(seq(2006, 2019, 2))) +
+    geom_line(linewidth = .75) +
+    scale_x_date(date_labels = "%b %Y", date_breaks = "1 year") +
     theme_minimal() +
-    #scale_color_brewer(palette = "Set1") + 
     labs(
-        #color = "Season",
         x = "",
         y = "Wildfire smoke PM2.5 (µg/m3)"
     ) +
     theme(
-        #panel.grid.minor = element_blank(),
-        axis.text = element_text(size=20),
-        axis.title = element_text(size=20),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size=25),
+        axis.text.x = element_text(size=22, angle = 90),
+        axis.title = element_text(size=28),
         legend.title = element_text(size=20),
         legend.text = element_text(size=20)
     )
@@ -152,19 +151,20 @@ ggsave(filename = "plots/fig1_pm2.5_timeseries.png", plot = pm2.5_timeseries, de
 deathrate_timeseries <-
     time_series_data %>% 
     ggplot(aes(x = yearmonth, y = mean_deathrate)) +
-    geom_line(linewidth = .5) +
-    #scale_x_continuous(breaks = c(seq(2006, 2019, 1))) +
+    geom_line(linewidth = .75) +
+    scale_x_date(date_labels = "%b %Y", date_breaks = "1 year") +
     theme_minimal() +
     #scale_color_brewer(palette = "Set1") + 
     labs(
         #color = "Season",
         x = "",
-        y = "Age-adjusted mortality per 10,000"
+        y = "Age-adjusted mortality per 100,000"
     ) +
     theme(
         panel.grid.minor = element_blank(),
-        axis.text = element_text(size=20),
-        axis.title = element_text(size=20),
+        axis.text = element_text(size=25),
+        axis.text.x = element_text(size=22, angle = 90),
+        axis.title = element_text(size=28),
         legend.title = element_text(size=20),
         legend.text = element_text(size=20)
     )
@@ -201,9 +201,6 @@ legend_labels <-
     ) %>% 
     pull(label)
     
-    
-    unite(`V1`:`.`, sep = " ")
-
 pm2.5_histogram <-
     hist_data %>% 
     ggplot(aes(bars, fill=groupcolors)) +
@@ -216,14 +213,19 @@ pm2.5_histogram <-
     theme_minimal() +
     theme(
         panel.grid = element_blank(),
+        axis.text = element_text(size=16),
+        axis.title = element_text(size=18),
+        legend.position = c(0.78, 0.75),
         legend.title = element_blank(),
-        axis.text = element_text(size=20),
-        axis.title = element_text(size=20),
-        legend.text = element_text(size=20)
+        legend.text = element_text(size=16),
+        legend.spacing.y = unit(.15, 'cm'),
+        legend.key.height = unit(.1, 'cm'), #change legend key height
+        legend.key.width = unit(.45, 'cm') #change legend key width
     ) +
+    guides(fill = guide_legend(byrow = TRUE)) + #needed for legend.spacing.y to work
     scale_fill_brewer(palette = "YlOrRd", labels=legend_labels) +
     xlab("Monthly mean smoke PM2.5 (µg/m3)") +
     ylab("County-month observations")
 
-ggsave(filename = "plots/fig1_pm2.5_histogram.png", plot = pm2.5_histogram, device = "png", dpi = 200, height = 6, width = 7)
+ggsave(filename = "plots/fig1_pm2.5_histogram.png", plot = pm2.5_histogram, device = "png", dpi = 200, height = 6, width = 7.5)
 

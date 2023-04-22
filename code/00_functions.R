@@ -1,61 +1,5 @@
 #### Loading ACS variables: ####
 loadACS <- function(yr, svy) {
-    # acs_temp <- 
-    #     get_acs(
-    #         geography = "county",
-    #         table = "B01001",
-    #         year = yr,
-    #         survey = svy
-    #     ) %>%
-    #     left_join(
-    #         load_variables(yr, svy) %>%
-    #             filter(str_detect(name, "B01001")) %>%
-    #             dplyr::select(name, label),
-    #         by=c("variable"="name")
-    #     ) %>% 
-    #     separate(
-    #         label,
-    #         into = c("type", "group", "sex", "age_group_raw"),
-    #         sep = "!!"
-    #     ) %>% 
-    #     mutate(
-    #         sex = ifelse(is.na(sex), "all", sex),
-    #         age_group_raw = ifelse(is.na(age_group_raw), "all", age_group_raw),
-    #     ) %>% 
-    #     mutate(
-    #         age_group =
-    #             case_when(
-    #                 age_group_raw == "all" ~ "all",
-    #                 age_group_raw == "Under 5 years" | 
-    #                     age_group_raw == "5 to 9 years" | 
-    #                     age_group_raw == "10 to 14 years" ~ "u15",
-    #                 age_group_raw == "15 to 17 years" | 
-    #                     age_group_raw == "18 and 19 years" ~ "15to19",
-    #                 age_group_raw == "20 years" |
-    #                     age_group_raw == "21 years" |
-    #                     age_group_raw == "22 to 24 years" ~ "20to24",
-    #                 age_group_raw == "25 to 29 years" ~ "25to29",
-    #                 age_group_raw == "30 to 34 years" ~ "30to34",
-    #                 age_group_raw == "35 to 39 years" ~ "35to39",
-    #                 age_group_raw == "40 to 44 years" ~ "40to44",
-    #                 age_group_raw == "45 to 49 years" ~ "45to49",
-    #                 age_group_raw == "50 to 54 years" ~ "50to54",
-    #                 age_group_raw == "55 to 59 years" ~ "55to59",
-    #                 age_group_raw == "60 and 61 years" |
-    #                     age_group_raw == "62 to 64 years" ~ "60to64",
-    #                 age_group_raw == "65 and 66 years" |
-    #                     age_group_raw == "67 to 69 years" |
-    #                     age_group_raw == "70 to 74 years" ~ "65to74",
-    #                 age_group_raw == "75 to 79 years" |
-    #                     age_group_raw == "80 to 84 years" ~ "75to84",
-    #                 age_group_raw == "85 years and over" ~ "o85"
-    #             ) 
-    #     ) %>% 
-    #     dplyr::select(-type, -group, -age_group_raw, -variable, pop = estimate) %>% 
-    #     group_by(GEOID, NAME, sex, age_group) %>%
-    #     summarise(pop = sum(pop))
-    
-    # clean up marital status data
     acs_marital_status <-
         get_acs(
             geography = "county",
@@ -104,7 +48,7 @@ loadACS <- function(yr, svy) {
         mutate(
             age_group =
                 case_when(
-                    age_group == "all" ~ "o15",
+                    age_group == "all" ~ "15_and_up",
                     age_group == "15 to 17 years" | 
                         age_group == "18 and 19 years" ~ "15to19",
                     age_group == "20 to 24 years" ~ "20to24",
@@ -118,7 +62,7 @@ loadACS <- function(yr, svy) {
                     age_group == "60 to 64 years" ~ "60to64",
                     age_group == "65 to 74 years" ~ "65to74",
                     age_group == "75 to 84 years" ~ "75to84",
-                    age_group == "85 years and over" ~ "o85"
+                    age_group == "85 years and over" ~ "85_and_up"
                 )
         ) %>% 
         dplyr::select(-x1, -x2, -x5, -x6, -x7, -label) %>% 
@@ -134,15 +78,6 @@ loadACS <- function(yr, svy) {
         ) %>% #remove duplicate "all"s that come from specifics of marital status subgroups (eg separated vs not)
         group_by(GEOID, NAME, sex, marital_status, age_group) %>%
         summarise(estimate = sum(estimate))
-    
-    # merged_acs <-
-    #     full_join(
-    #         acs_temp_new_age_groups,
-    #         acs_marital_status_final
-    #     ) %>% 
-    #     dplyr::select(GEOID, NAME, sex, marital_status, age_group, pop, estimate)
-    
-    # return(merged_acs)
     
     #clean up some formatting
     acs_marital_status <-
@@ -161,21 +96,63 @@ loadACS <- function(yr, svy) {
                     marital_status == "Now married:" ~ "Now married",
                     marital_status == "Widowed:" ~ "Widowed",
                     TRUE ~ marital_status
-                )
+                ),
+            year = yr
         )
     
-    return(acs_marital_status)
+    ## the "all" for sex and marital_status doesn't include every combo so 
+    ## remove and reconstruct them
+    pop_df <- 
+        acs_marital_status %>% 
+        filter(sex != "all",
+               marital_status != "all")
+    
+    ## Make a set of "all" sex
+    all_sex <- pop_df %>% 
+        mutate(sex = "all") %>% 
+        group_by(GEOID, NAME, year, sex, marital_status, age_group) %>% 
+        summarize(estimate = sum(estimate))
+    
+    all_marital <- pop_df %>% 
+        mutate(marital_status = "all") %>% 
+        group_by(GEOID, NAME, year, sex, marital_status, age_group) %>% 
+        summarize(estimate = sum(estimate))
+    
+    all_sex_all_marital <- pop_df %>% 
+        mutate(sex = "all",
+               marital_status = "all") %>% 
+        group_by(GEOID, NAME, year, sex, marital_status, age_group) %>% 
+        summarize(estimate = sum(estimate))
+    
+    marital_population <- 
+        bind_rows(
+            pop_df,
+            all_sex,
+            all_marital,
+            all_sex_all_marital
+        ) %>% 
+        ungroup() %>% 
+        arrange(GEOID, year, sex, marital_status, age_group)
+    
+    return(marital_population)
 }
 
 
 #### Interpret model coefs ####
 interpret_model <- function(model, se_type) {
+    sig_digits <- 4
     if (se_type == "cluster") {
         wfpm2.5_beta <- coefficients(model, vcov_cluster = "fipsihme")[1] %>% as.numeric()
-        wfpm2.5_se <- se(model, vcov_cluster = "fipsihme")[1] %>% as.numeric()
-    } else {
+        wfpm2.5_se <- fixest::se(model, vcov_cluster = "fipsihme")[1] %>% as.numeric()
+    } else if (se_type == "hetero") {
         wfpm2.5_beta <- coefficients(model, vcov = se_type)[1] %>% as.numeric()
-        wfpm2.5_se <- se(model, vcov = se_type)[1] %>% as.numeric()
+        wfpm2.5_se <- fixest::se(model, vcov = se_type)[1] %>% as.numeric()
+    } else if (se_type == "iid") {
+        wfpm2.5_beta <- coefficients(model, vcov = se_type)[1] %>% as.numeric()
+        wfpm2.5_se <- fixest::se(model, vcov = se_type)[1] %>% as.numeric()
+    } else { #this basically just covers the `gnm` output
+        wfpm2.5_beta <- coefficients(model)[1] %>% as.numeric()
+        wfpm2.5_se <- gnm::se(model)[1,2] %>% as.numeric()
     }
     
     CI_lower = exp(wfpm2.5_beta - 1.96 * wfpm2.5_se)
@@ -194,6 +171,58 @@ interpret_model <- function(model, se_type) {
     )
 }
 
+#### Return TWFE model using standard params, useful for sub-analyses ####
+subanalysis_modeler <- function(df) {
+    return(
+        feglm(n_deaths ~ 
+                  mean_pm2.5 + 
+                  ns(weighted_temp, df=3) + weighted_precip | fipsihme^month + year, 
+              offset = log(df$pop),
+              data = df,
+              weights = df$pop,
+              family = quasipoisson,
+              cluster = df$fipsihme)
+    )
+}
+
+#### Return TWFE with specified params ####
+modeler <- function(df, x, ctrls, fes, cluster) {
+    ## define the formula for the model
+    ctrls <- ifelse(ctrls != "", paste0("+", ctrls), ctrls) #need to add plus if there are controls
+    formula <- paste0(x, ctrls, "|", fes)
+    
+    mod <-
+        feglm(
+            as.formula(
+                paste0("n_deaths", "~", formula)
+            ),
+            offset = log(df$pop),
+            data = df,
+            weights = df$pop,
+            family = quasipoisson,
+            cluster = cluster)
+    
+    mean_pm2.5 <- coefficients(mod)[1]
+    se_county_cluster <- fixest::se(mod)[1]
+    pval_county_cluster <- summary(mod)$coeftable[1,4]
+    se_iid <- fixest::se(mod, vcov="iid")[1]
+    pval_iid <- summary(mod, vcov="iid")$coeftable[1,4]
+    se_hetero <- fixest::se(mod, vcov="hetero")[1]
+    pval_hetero <- summary(mod, vcov="hetero")$coeftable[1,4]
+
+    row <- 
+        c(mean_pm2.5, se_county_cluster, pval_county_cluster, 
+          se_iid, pval_iid, 
+          se_hetero, pval_hetero) %>%
+        t() %>% 
+        data.frame()
+    
+    colnames(row) <- c("mean_pm2.5", "se_county_cluster", "pval_county_cluster",
+                       "se_iid", "pval_iid",
+                       "se_hetero", "pval_hetero")
+    
+    return(row)
+}
 
 #### PRISM data download helper ####
 prism_helper <- function(year, env_var) {
