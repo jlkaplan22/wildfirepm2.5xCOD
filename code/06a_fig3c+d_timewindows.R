@@ -1,20 +1,24 @@
 #### Fig 3--effect of study window on model output ####
 
-source("code/quickprep_agestratified.R")
+#Load age-specific data:
 
 #Fig 3c: 5-year window with iteratively added years, stratified by age
-output_c <- as.data.frame(matrix(nrow=20, ncol=7))
-colnames(output_c) <- c("startyear", "endyear", "agegroup", "mean_pm2.5", "se_county_cluster", "se_iid", "se_hetero")
+output_c <- as.data.frame(matrix(nrow=20, ncol=10))
+colnames(output_c) <- c("startyear", "endyear", "agegroup", "mean_pm2.5", 
+                        "se_county_cluster", "pval_county_cluster",
+                        "se_iid", "pval_iid",
+                        "se_hetero", "pval_hetero")
+
 
 for (i in 1:11) {
     indexyear <- 2008 + i
     
     year_restricted_df_under65 <-
-        final %>% 
+        final_agestratified %>% 
         filter(year <= indexyear, age_group == "under_65")
     
     year_restricted_df_65up <-
-        final %>% 
+        final_agestratified %>% 
         filter(year <= indexyear, age_group == "65_and_up")
     
     controls <- "ns(weighted_temp, df=3) + weighted_precip"
@@ -38,11 +42,21 @@ fig3c_mod_outputs <-
     output_c %>% 
     mutate(
         year_range = paste(startyear, endyear, sep="-"),
+        
+        #exponentiate
         point_est = exp(mean_pm2.5),
         CI_lower_clustered = exp(mean_pm2.5 - qnorm(0.975) * se_county_cluster),
         CI_upper_clustered = exp(mean_pm2.5 + qnorm(0.975) * se_county_cluster),
         CI_lower_iid = exp(mean_pm2.5 - qnorm(0.975) * se_iid),
         CI_upper_iid = exp(mean_pm2.5 + qnorm(0.975) * se_iid),
+        
+        #convert to interpretable percentages
+        point_est_percent = (point_est - 1) * 100,
+        CI_lower_clustered_percent = (CI_lower_clustered - 1) * 100,
+        CI_upper_clustered_percent = (CI_upper_clustered - 1) * 100,
+        CI_lower_iid_percent = (CI_lower_iid - 1) * 100,
+        CI_upper_iid_percent = (CI_upper_iid - 1) * 100,
+        
         .keep=c("all")
     ) %>% 
     cbind(gl(11, 2)) %>% 
@@ -50,11 +64,11 @@ fig3c_mod_outputs <-
 
 coefs_c <-
     fig3c_mod_outputs %>% 
-    ggplot(aes(x = mod_num, y = point_est - 1)) + 
+    ggplot(aes(x = mod_num, y = point_est_percent)) + 
     geom_linerange(
-                aes(ymin = CI_lower_clustered - 1, ymax = CI_upper_clustered - 1), lwd=.2) +
+                aes(ymin = CI_lower_clustered_percent, ymax = CI_upper_clustered_percent), lwd=.2) +
     geom_linerange(
-            aes(ymin = CI_lower_iid - 1, ymax = CI_upper_iid - 1), lwd=.6, color = "cornflowerblue") +
+            aes(ymin = CI_lower_iid_percent, ymax = CI_upper_iid_percent), lwd=.6, color = "cornflowerblue") +
     geom_point(size=.5) +
     theme_minimal() +
     geom_hline(yintercept = 0, colour = DEFAULT_COLOR, lty = 2, size=0.25) + 
@@ -68,7 +82,7 @@ coefs_c <-
     facet_grid(vars(agegroup %>% factor(levels = c("<65", "65+"))), scales="free_y")
 
 years_c <-
-    fig3a_mod_outputs %>% 
+    fig3c_mod_outputs %>% 
     mutate(
         mod_num = mod_num,
         `2006` = ifelse(startyear <= 2006 & endyear >= 2006, 1, 0),
@@ -113,8 +127,11 @@ ggsave(filename = "plots/fig3c.png", plot = fig3c, device = "png", dpi = 200, he
 
 
 #Fig 3d: moving 5-year window, stratifying by age
-output_d <- as.data.frame(matrix(nrow=18, ncol=7))
-colnames(output_d) <- c("startyear", "endyear", "agegroup", "mean_pm2.5", "se_county_cluster", "se_iid", "se_hetero")
+output_d <- as.data.frame(matrix(nrow=18, ncol=10))
+colnames(output_d) <- c("startyear", "endyear", "agegroup", "mean_pm2.5", 
+                        "se_county_cluster", "pval_county_cluster",
+                        "se_iid", "pval_iid",
+                        "se_hetero", "pval_hetero")
 
 range <- 3
 
@@ -123,11 +140,11 @@ for (i in 1:(2020-2006-range)) {
     endyear <- startyear + range
     
     year_restricted_df_under65 <-
-        final %>% 
+        final_agestratified %>% 
         filter(year >= startyear, year <= endyear, age_group == "under_65")
     
     year_restricted_df_65up <-
-        final %>% 
+        final_agestratified %>% 
         filter(year >= startyear, year <= endyear, age_group == "65_and_up")
     
     controls <- "ns(weighted_temp, df=3) + weighted_precip"

@@ -1,8 +1,11 @@
 #### Fig 3--effect of study window on model output ####
 
 #Fig 3a: 5-year window with iteratively added years
-output_a <- as.data.frame(matrix(nrow=10, ncol=6))
-colnames(output_a) <- c("startyear", "endyear", "mean_pm2.5", "se_county_cluster", "se_iid", "se_hetero")
+output_a <- as.data.frame(matrix(nrow=10, ncol=9))
+colnames(output_a) <- c("startyear", "endyear", "mean_pm2.5", 
+                      "se_county_cluster", "pval_county_cluster",
+                      "se_iid", "pval_iid",
+                      "se_hetero", "pval_hetero")
 
 for (i in 1:11) {
     indexyear <- 2008 + i
@@ -97,8 +100,12 @@ ggsave(filename = "plots/fig3a.png", plot = fig3a, device = "png", dpi = 200, he
 
 
 #Fig 3b: moving 5-year window
-output_b <- as.data.frame(matrix(nrow=9, ncol=6))
-colnames(output_b) <- c("startyear", "endyear", "mean_pm2.5", "se_county_cluster", "se_iid", "se_hetero")
+output_b <- as.data.frame(matrix(nrow=10, ncol=9))
+colnames(output_b) <- c("startyear", "endyear", "mean_pm2.5", 
+                        "se_county_cluster", "pval_county_cluster",
+                        "se_iid", "pval_iid",
+                        "se_hetero", "pval_hetero")
+
 
 range <- 3
 

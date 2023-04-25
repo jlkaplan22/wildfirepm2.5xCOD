@@ -242,15 +242,17 @@ coefs <-
 
 
 size <- .8
-height <- .4
-width <- .7
+height_2a <- .4
+height_2b <- .4
+width_2a <- .5
+width_2b <- .1
 colorpalette <- c("white", "#008B45", "#BA1921", "dodgerblue1", "#5E569B")
 
 model_fes <-
     modspecs_fes %>% 
     filter(model_number %in% low_coef_models != TRUE) %>% 
     ggplot(aes(x = model_rank, y = as.factor(feature), fill = color)) + 
-    geom_tile(color = "gray", height = height, width = width) +
+    geom_tile(color = "gray", height = height_2a, width = width_2a) +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     scale_y_discrete(labels = c("County", "County*Cal. Month", "Year-Month", "Year")) +
     theme_minimal() + 
@@ -270,7 +272,7 @@ model_temp <-
     modspecs_temp %>% 
     filter(model_number %in% low_coef_models != TRUE) %>% 
     ggplot(aes(x = model_rank, y = dummy, fill = temp_choice)) + 
-    geom_tile(color = "gray", height = height, width = width) +
+    geom_tile(color = "gray", height = height_2a, width = width_2a) +
     scale_fill_manual(values=colorpalette) +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     theme_minimal() + 
@@ -290,7 +292,7 @@ model_precip <-
     modspecs_precip %>% 
     filter(model_number %in% low_coef_models != TRUE) %>% 
     ggplot(aes(x = model_rank, y = dummy, fill = precip_choice)) + 
-    geom_tile(color = "gray", height = height, width = width) +
+    geom_tile(color = "gray", height = height_2a, width = width_2a) +
     scale_fill_manual(values=colorpalette) +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     theme_minimal() + 
@@ -337,7 +339,7 @@ model_fes <-
     modspecs_fes %>% 
     filter(model_number %in% low_coef_models) %>% 
     ggplot(aes(x = model_rank, y = as.factor(feature), fill = color)) + 
-    geom_tile(color = "gray", height = height, width = width) +
+    geom_tile(color = "gray", height = height_2b, width = width_2b) +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     scale_y_discrete(labels = c("County", "County*Cal. Month", "Year-Month", "Year")) +
     theme_minimal() + 
@@ -358,7 +360,7 @@ model_temp <-
     modspecs_temp %>% 
     filter(model_number %in% low_coef_models) %>% 
     ggplot(aes(x = model_rank, y = dummy, fill = temp_choice)) + 
-    geom_tile(color = "gray", height = height, width = width) +
+    geom_tile(color = "gray", height = height_2b, width = width_2b) +
     scale_fill_manual(values=colorpalette) +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     theme_minimal() + 
@@ -378,7 +380,7 @@ model_precip <-
     modspecs_precip %>% 
     filter(model_number %in% low_coef_models) %>% 
     ggplot(aes(x = model_rank, y = dummy, fill = precip_choice)) + 
-    geom_tile(color = "gray", height = height, width = width) +
+    geom_tile(color = "gray", height = height_2b, width = width_2b) +
     scale_fill_manual(values=colorpalette) +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     theme_minimal() + 
