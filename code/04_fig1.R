@@ -60,7 +60,6 @@ smokepm2.5_labels <- smokepm2.5_buckets %>% str_sub(2, -2) %>% str_replace(",", 
 smokepm2.5_map <-
     map_data %>% 
     mutate(smokepm2.5_bin = factor(smokepm2.5_bin, labels = smokepm2.5_labels)) %>% 
-    #filter(fipsihme == "01001" | fipsihme == "01003") %>% #line for testing
     ggplot(aes(fill = smokepm2.5_bin)) +
     geom_sf(color = NA) + #color=NA to remove county borders
     scale_fill_brewer(palette = "OrRd") +

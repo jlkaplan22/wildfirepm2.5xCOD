@@ -64,22 +64,26 @@ fig3c_mod_outputs <-
 
 coefs_c <-
     fig3c_mod_outputs %>% 
-    ggplot(aes(x = mod_num, y = point_est_percent)) + 
+    ggplot(aes(x = factor(mod_num), y = point_est_percent, color = agegroup)) + 
+    geom_point(size=.5, position = position_dodge2(width = .5)) +
     geom_linerange(
-                aes(ymin = CI_lower_clustered_percent, ymax = CI_upper_clustered_percent), lwd=.2) +
+        aes(ymin = CI_lower_clustered_percent, ymax = CI_upper_clustered_percent), lwd=.2, position = position_dodge2(width = .5)) +
     geom_linerange(
-            aes(ymin = CI_lower_iid_percent, ymax = CI_upper_iid_percent), lwd=.6, color = "cornflowerblue") +
-    geom_point(size=.5) +
+        aes(ymin = CI_lower_iid_percent, ymax = CI_upper_iid_percent), lwd=.6, position = position_dodge2(width = .5)) +
+    #theme details
     theme_minimal() +
+    scale_color_brewer(palette = "Set1") +
+    ylab("% Change in Mortality Rate") +
     geom_hline(yintercept = 0, colour = DEFAULT_COLOR, lty = 2, size=0.25) + 
     theme(
         panel.grid = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
+        axis.title.y = element_text(size=12),
+        legend.title = element_blank(),
+        legend.text = element_text(size=12),
         plot.margin = unit(c(0,1,0,1), "cm")
-    ) +
-    facet_grid(vars(agegroup %>% factor(levels = c("<65", "65+"))), scales="free_y")
+    )
 
 years_c <-
     fig3c_mod_outputs %>% 
@@ -122,7 +126,7 @@ years_c_tiles <-
         plot.margin = unit(c(1,1,0,1), "cm")
     )
 
-fig3c <- coefs_c + years_c_tiles + plot_layout(ncol = 1, heights = c(3,1))
+fig3c <- coefs_c + years_c_tiles + plot_layout(ncol = 1, heights = c(5,3))
 ggsave(filename = "plots/fig3c.png", plot = fig3c, device = "png", dpi = 200, height = 5, width = 5)
 
 
@@ -168,11 +172,20 @@ fig3d_mod_outputs <-
     output_d %>% 
     mutate(
         year_range = paste(startyear, endyear, sep="-"),
+        #exponentiate
         point_est = exp(mean_pm2.5),
         CI_lower_clustered = exp(mean_pm2.5 - qnorm(0.975) * se_county_cluster),
         CI_upper_clustered = exp(mean_pm2.5 + qnorm(0.975) * se_county_cluster),
         CI_lower_iid = exp(mean_pm2.5 - qnorm(0.975) * se_iid),
         CI_upper_iid = exp(mean_pm2.5 + qnorm(0.975) * se_iid),
+        
+        #convert to interpretable percentages
+        point_est_percent = (point_est - 1) * 100,
+        CI_lower_clustered_percent = (CI_lower_clustered - 1) * 100,
+        CI_upper_clustered_percent = (CI_upper_clustered - 1) * 100,
+        CI_lower_iid_percent = (CI_lower_iid - 1) * 100,
+        CI_upper_iid_percent = (CI_upper_iid - 1) * 100,
+        
         .keep=("all")
     ) %>% 
     cbind(gl((2020-2006-range), 2)) %>% 
@@ -180,20 +193,26 @@ fig3d_mod_outputs <-
 
 coefs_d <-
     fig3d_mod_outputs %>% 
-    ggplot(aes(x = year_range, y = point_est - 1)) + 
-    geom_linerange(aes(ymin = CI_lower_clustered - 1, ymax = CI_upper_clustered - 1), lwd=.2) +
-    geom_linerange(aes(ymin = CI_lower_iid - 1, ymax = CI_upper_iid - 1), lwd=.6, color = "cornflowerblue") +
-    geom_point(size=.5) +
+    ggplot(aes(x = factor(mod_num), y = point_est_percent, color = agegroup)) + 
+    geom_point(size=.5, position = position_dodge2(width = .5)) +
+    geom_linerange(
+        aes(ymin = CI_lower_clustered_percent, ymax = CI_upper_clustered_percent), lwd=.2, position = position_dodge2(width = .5)) +
+    geom_linerange(
+        aes(ymin = CI_lower_iid_percent, ymax = CI_upper_iid_percent), lwd=.6, position = position_dodge2(width = .5)) +
+    #theme details
     theme_minimal() +
+    scale_color_brewer(palette = "Set1") +
+    ylab("% Change in Mortality Rate") +
     geom_hline(yintercept = 0, colour = DEFAULT_COLOR, lty = 2, size=0.25) + 
     theme(
         panel.grid = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
+        axis.title.y = element_text(size=12),
+        legend.title = element_blank(),
+        legend.text = element_text(size=12),
         plot.margin = unit(c(0,1,0,1), "cm")
-    ) +
-    facet_grid(vars(agegroup), scales="free_y")
+    )
 
 years_d <-
     fig3d_mod_outputs %>% 
@@ -234,5 +253,5 @@ years_d_tiles <-
         plot.margin = unit(c(1,1,0,1), "cm")
     )
 
-fig3d <- coefs_d + years_d_tiles + plot_layout(ncol = 1, heights = c(2,1))
+fig3d <- coefs_d + years_d_tiles + plot_layout(ncol = 1, heights = c(5,3))
 ggsave(filename = "plots/fig3d.png", plot = fig3d, device = "png", dpi = 200, height = 5, width = 5)
