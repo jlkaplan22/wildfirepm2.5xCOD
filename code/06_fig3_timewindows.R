@@ -1,7 +1,5 @@
 #### Fig 3--effect of study window on model output ####
 
-source("code/quickprepfinaldata_AC.R")
-
 #Fig 3a: 5-year window with iteratively added years
 output_a <- as.data.frame(matrix(nrow=10, ncol=6))
 colnames(output_a) <- c("startyear", "endyear", "mean_pm2.5", "se_county_cluster", "se_iid", "se_hetero")

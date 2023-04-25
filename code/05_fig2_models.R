@@ -1,8 +1,6 @@
 #### TWFEs with varying model specifications ####
 #All-cause mortality and mean smoke PM2.5
 
-source("code/quickprepfinaldata_AC.R")
-
 fes <- c("fipsihme + yearmonth", "fipsihme^month + year", "fipsihme + year")
 temp <- c("", "weighted_temp", "temp", "ns(weighted_temp, df=3)", "ns(weighted_temp, df=5)")
 precip <- c("", "weighted_precip", "precip", "ns(weighted_precip, df=3)", "ns(weighted_precip, df=5)")
@@ -23,18 +21,23 @@ grid <-
     cbind(tibble(model_number = seq(1:nrow(.)))) %>% 
     dplyr::select(model_number, fes, controls)
 
-output <- as.data.frame(matrix(nrow=nrow(grid), ncol=5))
-colnames(output) <- c("model_number", "mean_pm2.5", "se_county_cluster", "se_iid", "se_hetero")
+output <- as.data.frame(matrix(nrow=nrow(grid), ncol=8))
+colnames(output) <- c("model_number", "mean_pm2.5", 
+                      "se_county_cluster", "pval_county_cluster",
+                      "se_iid", "pval_iid",
+                      "se_hetero", "pval_hetero")
 
-tic() #takes about 75s
+tic() #takes about 91s
 for (i in 1:nrow(grid)) {
     fes <- grid$fes[i]
     controls <- grid$controls[i]
     
+    model_output <- modeler(final, "mean_pm2.5", controls, fes, final$fipsihme)
+    
     output[i,] <- 
         c(
             grid$model_number[i],
-            modeler(final, "mean_pm2.5", controls, fes, final$fipsihme)
+            model_output
         )
 }
 toc()
@@ -43,14 +46,21 @@ fig2_mod_outputs <-
     output %>% 
     mutate(
         model_number = model_number,
+        #exponentiate
         point_est = exp(mean_pm2.5),
         CI_lower_clustered = exp(mean_pm2.5 - qnorm(0.975) * se_county_cluster),
         CI_upper_clustered = exp(mean_pm2.5 + qnorm(0.975) * se_county_cluster),
         CI_lower_iid = exp(mean_pm2.5 - qnorm(0.975) * se_iid),
         CI_upper_iid = exp(mean_pm2.5 + qnorm(0.975) * se_iid),
         
-        preferred_mod = ifelse(model_number==26, 1, 0),
-        .keep=("none")
+        #convert to interpretable percentages
+        point_est_percent = (point_est - 1) * 100,
+        CI_lower_clustered_percent = (CI_lower_clustered - 1) * 100,
+        CI_upper_clustered_percent = (CI_upper_clustered - 1) * 100,
+        CI_lower_iid_percent = (CI_lower_iid - 1) * 100,
+        CI_upper_iid_percent = (CI_upper_iid - 1) * 100,
+        
+        preferred_mod = ifelse(model_number==26, 1, 0)
     ) %>% 
     arrange(point_est) %>% 
     cbind(
@@ -58,6 +68,48 @@ fig2_mod_outputs <-
     ) %>% 
     rename(model_rank = `seq(1:nrow(.))`)
 
+#Number of models that fit X specification (for writing results section):
+fig2_mod_outputs %>% 
+    filter(pval_iid < .05) %>% 
+    nrow() #59
+
+fig2_mod_outputs %>% 
+    filter(pval_county_cluster < .05) %>% 
+    nrow() #8
+
+fig2_mod_outputs %>% 
+    filter(mean_pm2.5 < 0) %>% 
+    nrow() #56
+
+fig2_mod_outputs %>% 
+    filter(mean_pm2.5 > 0) %>% 
+    nrow() #19
+
+fig2_mod_outputs %>% 
+    left_join(grid, by=c("model_number")) %>% 
+    filter(fes == "fipsihme + yearmonth") %>% 
+    filter(mean_pm2.5 > 0) %>% 
+    nrow() #4
+
+fig2_mod_outputs %>% 
+    left_join(grid, by=c("model_number")) %>% 
+    filter(fes == "fipsihme + yearmonth") %>% 
+    filter(mean_pm2.5 < 0) %>% 
+    nrow() #21
+
+fig2_mod_outputs %>% 
+    left_join(grid, by=c("model_number")) %>% 
+    filter(fes == "fipsihme + year") %>% 
+    filter(mean_pm2.5 > 0) %>% 
+    nrow() #15
+
+fig2_mod_outputs %>% 
+    left_join(grid, by=c("model_number")) %>% 
+    filter(fes == "fipsihme + year") %>% 
+    filter(mean_pm2.5 < 0) %>% 
+    nrow() #10
+
+#Create color-coded legend for FEs
 modspecs_fes <-
     grid %>% 
     left_join(
@@ -103,27 +155,27 @@ modspecs_temp <-
     mutate(
         model_number = model_number,
         model_rank = model_rank,
-        `ns(weighted_temp, df=5)` = ifelse(str_detect(controls, "ns\\(weighted_temp, df=5\\)"), 1, 0),
-        `ns(weighted_temp, df=3)` = ifelse(str_detect(controls, "ns\\(weighted_temp, df=3\\)"), 1, 0),
-        weighted_temp = ifelse(str_detect(controls, "weighted_temp") &
-                                   `ns(weighted_temp, df=5)` == 0 &
-                                   `ns(weighted_temp, df=3)` == 0, 1, 0),
-        temp = ifelse(str_detect(controls, "temp") & 
-                          `ns(weighted_temp, df=5)` == 0 &
-                          `ns(weighted_temp, df=3)` == 0 & 
-                          weighted_temp == 0, 1, 0),
+        
+        dummy = "1",
+        
+        temp_choice =
+            case_when(
+                str_detect(controls, "ns\\(weighted_temp, df=5\\)") ~ "NS, df=5",
+                str_detect(controls, "ns\\(weighted_temp, df=3\\)") ~ "NS, df=3",
+                str_detect(controls, "weighted_temp") ~ "Linear",
+                str_detect(controls, "temp") ~ "Linear, unweighted",
+                TRUE ~ "None"
+            ) %>% 
+            factor(
+                levels = 
+                    c(
+                        "None", "Linear, unweighted", "Linear", "NS, df=3", "NS, df=5"
+                    )
+            ),
+
         .keep = c("none")
     ) %>% 
-    pivot_longer(`ns(weighted_temp, df=5)`:temp, names_to="feature", values_to="value") %>% 
-    mutate(
-        feature = 
-            factor(feature,
-                   levels =
-                       c(
-                           "temp", "weighted_temp", "ns(weighted_temp, df=3)", "ns(weighted_temp, df=5)"
-                       )
-            )
-    )
+    arrange(model_rank)
 
 modspecs_precip <-
     grid %>% 
@@ -134,27 +186,27 @@ modspecs_precip <-
     mutate(
         model_number = model_number,
         model_rank = model_rank,
-        `ns(weighted_precip, df=5)` = ifelse(str_detect(controls, "ns\\(weighted_precip, df=5\\)"), 1, 0),
-        `ns(weighted_precip, df=3)` = ifelse(str_detect(controls, "ns\\(weighted_precip, df=3\\)"), 1, 0),
-        weighted_precip = ifelse(str_detect(controls, "weighted_precip") &
-                                     `ns(weighted_precip, df=5)` == 0 &
-                                     `ns(weighted_precip, df=3)` == 0, 1, 0),
-        precip = ifelse(str_detect(controls, "precip") & 
-                            `ns(weighted_precip, df=5)` == 0 &
-                            `ns(weighted_precip, df=3)` == 0 & 
-                            weighted_precip == 0, 1, 0),
+        
+        dummy = "1",
+        
+        precip_choice =
+            case_when(
+                str_detect(controls, "ns\\(weighted_precip, df=5\\)") ~ "NS, df=5",
+                str_detect(controls, "ns\\(weighted_precip, df=3\\)") ~ "NS, df=3",
+                str_detect(controls, "weighted_precip") ~ "Linear",
+                str_detect(controls, "precip") ~ "Linear, unweighted",
+                TRUE ~ "None"
+            ) %>% 
+            factor(
+                levels = 
+                    c(
+                        "None", "Linear, unweighted", "Linear", "NS, df=3", "NS, df=5"
+                    )
+            ),
+        
         .keep = c("none")
     ) %>% 
-    pivot_longer(`ns(weighted_precip, df=5)`:precip, names_to="feature", values_to="value") %>% 
-    mutate(
-        feature = 
-            factor(feature,
-                   levels =
-                       c(
-                           "precip", "weighted_precip", "ns(weighted_precip, df=3)", "ns(weighted_precip, df=5)"
-                       )
-            )
-    )
+    arrange(model_rank)
 
 #Create figure 2a
 low_coef_models <- c(3, 18, 33, 48, 63)
@@ -162,32 +214,37 @@ low_coef_models <- c(3, 18, 33, 48, 63)
 coefs <-
     fig2_mod_outputs %>% 
     filter(model_number %in% low_coef_models != TRUE) %>% 
-    ggplot(aes(x = model_rank, y = point_est - 1)) + 
-    geom_linerange(aes(ymin = CI_lower_clustered - 1, ymax = CI_upper_clustered - 1), lwd=.2) +
-    geom_linerange(aes(ymin = CI_lower_iid - 1, ymax = CI_upper_iid - 1), lwd=.6, color = "cornflowerblue") +
-    # scale_y_break(c(-.015, -.002)) +
-    ylim(c(-.003, .005)) +
+    ggplot(aes(x = model_rank, y = point_est_percent)) + 
+    geom_linerange(aes(ymin = CI_lower_clustered_percent, ymax = CI_upper_clustered_percent), lwd=.2, color = "gray30") +
+    geom_linerange(aes(ymin = CI_lower_iid_percent, ymax = CI_upper_iid_percent), lwd=.6, color = "dodgerblue3") +
     geom_point(size=.5) +
     geom_point(data = fig2_mod_outputs %>% filter(preferred_mod==1), 
-               aes(x=model_rank, y = point_est-1), 
-               color = "red", size = .5) +
+               aes(x=model_rank, y = point_est_percent), 
+               color = "red", size = 1) +
     theme_minimal() +
     geom_hline(yintercept = 0, colour = DEFAULT_COLOR, lty = 2, size=0.25) + 
-    # geom_hline(yintercept = -.015, colour = "red", lty = 2, size=0.25) + 
-    # geom_hline(yintercept = -.002, colour = "red", lty = 2, size=0.25) + 
+    ylab("% Change in Mortality Rate") +
     theme(
         panel.grid = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
+        axis.title.y = element_text(size = 12),
         plot.margin = unit(c(0,1,0,1), "cm"),
         legend.position = "none"
-    )
+    ) +
+    #Spotlight the prefered model
+    annotate("rect", 
+             xmin = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(model_rank) - .5, 
+             xmax = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(model_rank) + .5, 
+             ymin = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(CI_lower_clustered_percent) - .05, 
+             ymax = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(CI_upper_clustered_percent) + .05,
+               alpha = .2)
 
 
 size <- .8
 height <- .4
 width <- .7
+colorpalette <- c("white", "#008B45", "#BA1921", "dodgerblue1", "#5E569B")
 
 model_fes <-
     modspecs_fes %>% 
@@ -197,15 +254,14 @@ model_fes <-
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     scale_y_discrete(labels = c("County", "County*Cal. Month", "Year-Month", "Year")) +
     theme_minimal() + 
-    #scale_fill_gradient(low = "white", high = "black") +
-    scale_fill_manual(values=c("white", "dodgerblue3", "coral2", "seagreen4")) +
-    ylab("Fixed effects") +
+    scale_fill_manual(values=c("white", "#C5ADCD", "#F8ACAA", "#AFCFD0")) +
+    ylab("FEs") +
     theme(
         legend.position = "none",
         panel.border = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.title.y = element_text(size = 8),
+        axis.title.y = element_text(size = 8, angle=0),
         panel.grid = element_blank(),
         plot.margin = unit(c(0,1,0,1), "cm")
     )
@@ -213,44 +269,47 @@ model_fes <-
 model_temp <-
     modspecs_temp %>% 
     filter(model_number %in% low_coef_models != TRUE) %>% 
-    ggplot(aes(x = model_rank, y = as.factor(feature), fill = value)) + 
+    ggplot(aes(x = model_rank, y = dummy, fill = temp_choice)) + 
     geom_tile(color = "gray", height = height, width = width) +
+    scale_fill_manual(values=colorpalette) +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
-    scale_y_discrete(labels = c("Linear, area-weighted", "Linear", "NS, df=3", "NS, df=5")) +
     theme_minimal() + 
-    scale_fill_gradient(low = "white", high = "black") +
-    ylab("Temperature") +
+    ylab("Temp") +
     theme(
-        legend.position = "none",
         panel.border = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.title.y = element_text(size = 8),
+        axis.title.y = element_text(size = 8, angle=0),
+        axis.text.y = element_blank(),
         panel.grid = element_blank(),
-        plot.margin = unit(c(0,1,0,1), "cm")
+        plot.margin = unit(c(0,1,0,1), "cm"),
+        legend.position = "none"
     )
 
 model_precip <-
     modspecs_precip %>% 
     filter(model_number %in% low_coef_models != TRUE) %>% 
-    ggplot(aes(x = model_rank, y = as.factor(feature), fill = value)) + 
+    ggplot(aes(x = model_rank, y = dummy, fill = precip_choice)) + 
     geom_tile(color = "gray", height = height, width = width) +
-    ggplot2::scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
-    scale_y_discrete(labels = c("Linear, area-weighted", "Linear", "NS, df=3", "NS, df=5")) +
+    scale_fill_manual(values=colorpalette) +
+    scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     theme_minimal() + 
-    scale_fill_gradient(low = "white", high = "black") +
-    ylab("Precipitation") +
-    ggplot2::theme(
-        legend.position = "none",
-        panel.border = ggplot2::element_blank(),
-        axis.text.x = ggplot2::element_blank(),
-        axis.title.x = ggplot2::element_blank(),
-        axis.title.y = element_text(size = 8),
-        panel.grid = ggplot2::element_blank(),
-        plot.margin = unit(c(0,1,0,1), "cm")
+    ylab("Precip") +
+    theme(
+        panel.border = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 8, angle=0),
+        axis.text.y = element_blank(),
+        panel.grid = element_blank(),
+        plot.margin = unit(c(0,1,0,1), "cm"),
+        legend.position = "bottom",
+        legend.key.size = unit(.2, "cm"),
+        legend.text = element_text(size=8),
+        legend.title = element_blank()
     )
 
-fig2a <- coefs + model_fes + model_temp + model_precip + plot_layout(ncol = 1, heights = c(6,1,1,1))
+fig2a <- coefs + model_fes + model_temp + model_precip + plot_layout(ncol = 1, heights = c(20,4,1.5,1.5))
 
 ggsave(filename = "plots/fig2a.png", plot = fig2a, device = "png", dpi = 200, height = 5, width = 9)
 
@@ -258,22 +317,21 @@ ggsave(filename = "plots/fig2a.png", plot = fig2a, device = "png", dpi = 200, he
 coefs <-
     fig2_mod_outputs %>% 
     filter(model_number %in% low_coef_models) %>% 
-    ggplot(aes(x = model_rank, y = point_est - 1)) + 
-    geom_linerange(aes(ymin = CI_lower_clustered - 1, ymax = CI_upper_clustered - 1), lwd=.2) +
-    geom_linerange(aes(ymin = CI_lower_iid - 1, ymax = CI_upper_iid - 1), lwd=.6, color = "cornflowerblue") +
+    ggplot(aes(x = model_rank, y = point_est_percent)) + 
+    geom_linerange(aes(ymin = CI_lower_clustered_percent, ymax = CI_upper_clustered_percent), lwd=.2, color = "gray30") +
+    geom_linerange(aes(ymin = CI_lower_iid_percent, ymax = CI_upper_iid_percent), lwd=.8, color = "dodgerblue3") +
     geom_point(size=.5) +
     theme_minimal() +
-    geom_hline(yintercept = 0, colour = DEFAULT_COLOR, lty = 2, size=0.25) + 
-    # geom_hline(yintercept = -.015, colour = "red", lty = 2, size=0.25) + 
-    # geom_hline(yintercept = -.002, colour = "red", lty = 2, size=0.25) + 
+    ylab("% Change in Mortality Rate") +
     theme(
         panel.grid = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
+        axis.title.y = element_text(size = 12),
         plot.margin = unit(c(0,1,0,1), "cm"),
         legend.position = "none"
     )
+    
 
 model_fes <-
     modspecs_fes %>% 
@@ -284,14 +342,14 @@ model_fes <-
     scale_y_discrete(labels = c("County", "County*Cal. Month", "Year-Month", "Year")) +
     theme_minimal() + 
     #scale_fill_gradient(low = "white", high = "black") +
-    scale_fill_manual(values=c("white", "dodgerblue3", "coral2", "seagreen4")) +
+    scale_fill_manual(values=c("white", "#C5ADCD", "#F8ACAA", "#AFCFD0")) +
     ylab("FEs") +
     theme(
         legend.position = "none",
         panel.border = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.title.y = element_text(size = 8),
+        axis.title.y = element_text(size = 8, angle=0),
         panel.grid = element_blank(),
         plot.margin = unit(c(0,1,0,1), "cm")
     )
@@ -299,65 +357,46 @@ model_fes <-
 model_temp <-
     modspecs_temp %>% 
     filter(model_number %in% low_coef_models) %>% 
-    ggplot(aes(x = model_rank, y = as.factor(feature), fill = value)) + 
+    ggplot(aes(x = model_rank, y = dummy, fill = temp_choice)) + 
     geom_tile(color = "gray", height = height, width = width) +
+    scale_fill_manual(values=colorpalette) +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
-    scale_y_discrete(labels = c("Linear, area-weighted", "Linear", "NS, df=3", "NS, df=5")) +
     theme_minimal() + 
-    scale_fill_gradient(low = "white", high = "black") +
     ylab("Temp") +
     theme(
-        legend.position = "none",
         panel.border = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.title.y = element_text(size = 8),
+        axis.title.y = element_text(size = 8, angle=0),
+        axis.text.y = element_blank(),
         panel.grid = element_blank(),
-        plot.margin = unit(c(0,1,0,1), "cm")
+        plot.margin = unit(c(0,1,0,1), "cm"),
+        legend.position = "none"
     )
 
 model_precip <-
     modspecs_precip %>% 
     filter(model_number %in% low_coef_models) %>% 
-    ggplot(aes(x = model_rank, y = as.factor(feature), fill = value)) + 
+    ggplot(aes(x = model_rank, y = dummy, fill = precip_choice)) + 
     geom_tile(color = "gray", height = height, width = width) +
-    ggplot2::scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
-    scale_y_discrete(labels = c("Linear, area-weighted", "Linear", "NS, df=3", "NS, df=5")) +
+    scale_fill_manual(values=colorpalette) +
+    scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     theme_minimal() + 
-    scale_fill_gradient(low = "white", high = "black") +
     ylab("Precip") +
-    ggplot2::theme(
-        legend.position = "none",
-        panel.border = ggplot2::element_blank(),
-        axis.text.x = ggplot2::element_blank(),
-        axis.title.x = ggplot2::element_blank(),
-        axis.title.y = element_text(size = 8),
-        panel.grid = ggplot2::element_blank(),
-        plot.margin = unit(c(0,1,0,1), "cm")
-    )
-
-fig2b <- coefs + model_fes + model_temp + model_precip + plot_layout(ncol = 1, heights = c(6,1,1,1))
-
-ggsave(filename = "plots/fig2a.png", plot = fig2a, device = "png", dpi = 200, height = 5, width = 9)
-
-
-#Supplementary figure with all three SE types
-S1_data <-
-    output %>% 
-    dplyr::select(`Clustered at county level` = se_county_cluster, `IID` = se_iid, `Heteroskedasticity-robust` = se_hetero) %>% 
-    pivot_longer(`Clustered at county level`:`Heteroskedasticity-robust`, names_to="se_type", values_to="value")
-
-S1 <-
-    S1_data %>% 
-    ggplot(aes(x = value, group = se_type)) +
-    geom_histogram(bins = 30) +
-    xlim(c(0, .0015)) +
-    facet_wrap(vars(se_type), ncol=1, scales = "free_y") +
-    theme_minimal() +
     theme(
-        #panel.grid = element_blank()
+        panel.border = element_blank(),
+        axis.text.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.title.y = element_blank()
+        axis.title.y = element_text(size = 8, angle=0),
+        axis.text.y = element_blank(),
+        panel.grid = element_blank(),
+        plot.margin = unit(c(0,1,0,1), "cm"),
+        legend.position = "bottom",
+        legend.key.size = unit(.2, "cm"),
+        legend.text = element_text(size=8),
+        legend.title = element_blank()
     )
 
-ggsave(filename = "plots/S1.png", plot = S1, device = "png", dpi = 200, height = 5, width = 9)
+fig2b <- coefs + model_fes + model_temp + model_precip + plot_layout(ncol = 1, heights = c(20,4,1.5,1.5))
+
+ggsave(filename = "plots/fig2b.png", plot = fig2b, device = "png", dpi = 200, height = 5, width = 5)
