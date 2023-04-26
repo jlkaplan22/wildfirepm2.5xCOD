@@ -29,6 +29,9 @@ library(splines)
 
 library(tidylog)
 
+#Get values for hidden pieces of info (API key):
+source("code/secrets.R")
+
 # Set paths
 if(Sys.getenv("HOME") == "/Users/jordankaplan"){
     local_root_path = "/Users/jordankaplan/Documents/"
@@ -41,7 +44,7 @@ raw_data_dir = paste0(local_box_path, "data_raw/")
 data_dir = paste0(local_box_path, "data/")
 
 # Census API key:
-census_api_key("2828600b30d7cbcaf6b2375c40e137c3bef459c7", install=TRUE, overwrite=TRUE)
+census_api_key(API_KEY, install=TRUE, overwrite=TRUE)
 
 # Load FIPS codes
 STATEFP <- 
