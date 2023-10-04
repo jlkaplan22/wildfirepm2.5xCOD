@@ -4,8 +4,7 @@
 # ------------------------------------------------------------------------------
 
 counties_sf <- 
-    #counties(year = 2006) %>% #2006 not working right now, try again later
-    counties(year = 2020) %>% 
+    counties %>% 
     filter(STATEFP %in% non_CONUS_FIPS == F) %>% 
     left_join(
         ihme_fips %>% dplyr::select(orig_fips, ihme_fips),

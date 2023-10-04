@@ -56,6 +56,9 @@ non_CONUS_FIPS <- c("60", "66", "69", "72", "78", "02", "15")
 
 fipsihme <- load(file="data/ihme_fips.rda")
 
+# Load counties sf data
+counties <- counties(year = 2020) #specific year should not matter except for small IHME differences
+
 # Load functions
 source("code/00_functions.R")
 

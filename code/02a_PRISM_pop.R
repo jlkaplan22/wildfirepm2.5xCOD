@@ -12,7 +12,7 @@ precip_stack <- pd_stack(prism_archive_ls())
 
 # load county sf
 counties_sf <- 
-    counties(year = 2020) %>% # year should be 2006 once those data are working again
+    counties %>% 
     filter(STATEFP %in% non_CONUS_FIPS == F) %>% 
     dplyr::select(GEOID)
 

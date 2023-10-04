@@ -218,8 +218,8 @@ coefs <-
     geom_linerange(aes(ymin = CI_lower_clustered_percent, ymax = CI_upper_clustered_percent), lwd=.2, color = "gray30") +
     geom_linerange(aes(ymin = CI_lower_iid_percent, ymax = CI_upper_iid_percent), lwd=.6, color = "dodgerblue3") +
     geom_point(size=.5) +
-    geom_point(data = fig2_mod_outputs %>% filter(preferred_mod==1), 
-               aes(x=model_rank, y = point_est_percent), 
+    geom_point(data = fig2_mod_outputs %>% filter(preferred_mod==1),
+               aes(x=model_rank, y = point_est_percent),
                color = "red", size = 1) +
     theme_minimal() +
     geom_hline(yintercept = 0, colour = DEFAULT_COLOR, lty = 2, size=0.25) + 
@@ -228,31 +228,31 @@ coefs <-
         panel.grid = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.title.y = element_text(size = 12),
+        axis.title.y = element_text(size = 18),
         plot.margin = unit(c(0,1,0,1), "cm"),
         legend.position = "none"
     ) +
     #Spotlight the prefered model
-    annotate("rect", 
-             xmin = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(model_rank) - .5, 
-             xmax = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(model_rank) + .5, 
-             ymin = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(CI_lower_clustered_percent) - .05, 
+    annotate("rect",
+             xmin = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(model_rank) - .5,
+             xmax = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(model_rank) + .5,
+             ymin = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(CI_lower_clustered_percent) - .05,
              ymax = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(CI_upper_clustered_percent) + .05,
                alpha = .2)
 
 
 size <- .8
-height_2a <- .4
-height_2b <- .4
-width_2a <- .5
-width_2b <- .1
+#height_2a <- .4
+#height_2b <- .4
+#width_2a <- .5
+#width_2b <- .1
 colorpalette <- c("white", "#008B45", "#BA1921", "dodgerblue1", "#5E569B")
 
 model_fes <-
     modspecs_fes %>% 
     filter(model_number %in% low_coef_models != TRUE) %>% 
     ggplot(aes(x = model_rank, y = as.factor(feature), fill = color)) + 
-    geom_tile(color = "gray", height = height_2a, width = width_2a) +
+    geom_tile(color = "gray") +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     scale_y_discrete(labels = c("County", "County*Cal. Month", "Year-Month", "Year")) +
     theme_minimal() + 
@@ -260,19 +260,22 @@ model_fes <-
     ylab("FEs") +
     theme(
         legend.position = "none",
+        legend.text = element_text(size = 12),
         panel.border = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.title.y = element_text(size = 8, angle=0),
+        axis.title.y = element_text(size = 12, angle=0),
+        axis.text.y = element_text(size = 10, angle=0),
         panel.grid = element_blank(),
         plot.margin = unit(c(0,1,0,1), "cm")
-    )
+    ) +
+    coord_equal()
 
 model_temp <-
     modspecs_temp %>% 
     filter(model_number %in% low_coef_models != TRUE) %>% 
     ggplot(aes(x = model_rank, y = dummy, fill = temp_choice)) + 
-    geom_tile(color = "gray", height = height_2a, width = width_2a) +
+    geom_tile(color = "gray") +
     scale_fill_manual(values=colorpalette) +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     theme_minimal() + 
@@ -281,18 +284,19 @@ model_temp <-
         panel.border = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.title.y = element_text(size = 8, angle=0),
+        axis.title.y = element_text(size = 12, angle=0),
         axis.text.y = element_blank(),
         panel.grid = element_blank(),
         plot.margin = unit(c(0,1,0,1), "cm"),
         legend.position = "none"
-    )
+    ) +
+    coord_equal()
 
 model_precip <-
     modspecs_precip %>% 
     filter(model_number %in% low_coef_models != TRUE) %>% 
     ggplot(aes(x = model_rank, y = dummy, fill = precip_choice)) + 
-    geom_tile(color = "gray", height = height_2a, width = width_2a) +
+    geom_tile(color = "gray") +
     scale_fill_manual(values=colorpalette) +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     theme_minimal() + 
@@ -301,19 +305,20 @@ model_precip <-
         panel.border = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.title.y = element_text(size = 8, angle=0),
+        axis.title.y = element_text(size = 12, angle=0),
         axis.text.y = element_blank(),
         panel.grid = element_blank(),
         plot.margin = unit(c(0,1,0,1), "cm"),
         legend.position = "bottom",
         legend.key.size = unit(.2, "cm"),
-        legend.text = element_text(size=8),
+        legend.text = element_text(size=12),
         legend.title = element_blank()
-    )
+    ) +
+    coord_equal()
 
-fig2a <- coefs + model_fes + model_temp + model_precip + plot_layout(ncol = 1, heights = c(20,4,1.5,1.5))
+fig2a <- coefs + model_fes + model_temp + model_precip + plot_layout(ncol = 1) # heights = c(20,4,1.5,1.5) was taken out
 
-ggsave(filename = "plots/fig2a.png", plot = fig2a, device = "png", dpi = 200, height = 5, width = 9)
+ggsave(filename = "plots/fig2a.png", plot = fig2a, device = "png", dpi = 200, height = 8, width = 10)
 
 #Fig 2b:
 coefs <-
@@ -339,7 +344,7 @@ model_fes <-
     modspecs_fes %>% 
     filter(model_number %in% low_coef_models) %>% 
     ggplot(aes(x = model_rank, y = as.factor(feature), fill = color)) + 
-    geom_tile(color = "gray", height = height_2b, width = width_2b) +
+    geom_tile(color = "gray") +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     scale_y_discrete(labels = c("County", "County*Cal. Month", "Year-Month", "Year")) +
     theme_minimal() + 
@@ -354,13 +359,14 @@ model_fes <-
         axis.title.y = element_text(size = 8, angle=0),
         panel.grid = element_blank(),
         plot.margin = unit(c(0,1,0,1), "cm")
-    )
+    ) +
+    coord_equal()
 
 model_temp <-
     modspecs_temp %>% 
     filter(model_number %in% low_coef_models) %>% 
     ggplot(aes(x = model_rank, y = dummy, fill = temp_choice)) + 
-    geom_tile(color = "gray", height = height_2b, width = width_2b) +
+    geom_tile(color = "gray") +
     scale_fill_manual(values=colorpalette) +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     theme_minimal() + 
@@ -374,13 +380,14 @@ model_temp <-
         panel.grid = element_blank(),
         plot.margin = unit(c(0,1,0,1), "cm"),
         legend.position = "none"
-    )
+    ) +
+    coord_equal()
 
 model_precip <-
     modspecs_precip %>% 
     filter(model_number %in% low_coef_models) %>% 
     ggplot(aes(x = model_rank, y = dummy, fill = precip_choice)) + 
-    geom_tile(color = "gray", height = height_2b, width = width_2b) +
+    geom_tile(color = "gray") +
     scale_fill_manual(values=colorpalette) +
     scale_alpha_manual(NULL, values = c(0, 0, 1, .4)) +
     theme_minimal() + 
@@ -393,12 +400,13 @@ model_precip <-
         axis.text.y = element_blank(),
         panel.grid = element_blank(),
         plot.margin = unit(c(0,1,0,1), "cm"),
-        legend.position = "bottom",
+        legend.position = "none",
         legend.key.size = unit(.2, "cm"),
         legend.text = element_text(size=8),
         legend.title = element_blank()
-    )
+    ) +
+    coord_equal()
 
-fig2b <- coefs + model_fes + model_temp + model_precip + plot_layout(ncol = 1, heights = c(20,4,1.5,1.5))
+fig2b <- coefs + model_fes + model_temp + model_precip + plot_layout(ncol = 1)
 
-ggsave(filename = "plots/fig2b.png", plot = fig2b, device = "png", dpi = 200, height = 5, width = 5)
+ggsave(filename = "plots/fig2b.png", plot = fig2b, device = "png", dpi = 200, height = 5, width = 3)

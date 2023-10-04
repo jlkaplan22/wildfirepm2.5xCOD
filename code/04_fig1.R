@@ -5,7 +5,7 @@ maplegend_textsize <- 14
 
 # Shape data for map use
 counties_sf <- 
-    counties(year = 2015) %>% 
+    counties %>% 
     filter(STATEFP %in% non_CONUS_FIPS == F) %>% 
     left_join(
         ihme_fips %>% dplyr::select(orig_fips, ihme_fips),
@@ -145,7 +145,6 @@ pm2.5_timeseries <-
 
 ggsave(filename = "plots/fig1_pm2.5_timeseries.png", plot = pm2.5_timeseries, device = "png", dpi = 200, height = 8.47, width = 12)
 
-
 # Mortality rate time series
 deathrate_timeseries <-
     time_series_data %>% 
@@ -169,6 +168,30 @@ deathrate_timeseries <-
     )
 
 ggsave(filename = "plots/fig1_deathrate_timeseries.png", plot = deathrate_timeseries, device = "png", dpi = 200, height = 8.47, width = 12)
+
+# Basic descriptive stats for seasonality of wildfire PM2.5 and mortality rates:
+time_series_data %>% 
+    mutate(
+        month = month(yearmonth),
+        season =
+            case_when(
+                month == 1 | month == 2 | month == 3 ~ "winter",
+                month == 4 | month == 5 | month == 6 ~ "spring",
+                month == 7 | month == 8 | month == 9 ~ "summer",
+                month == 10 | month == 11 | month == 12 ~ "fall"
+            )
+    ) %>% 
+    group_by(season) %>% 
+    summarise(smokepm = mean(mean_pm2.5), deathrate = mean(mean_deathrate))
+
+time_series_data %>% 
+    mutate(
+        year = year(yearmonth),
+    ) %>% 
+    group_by(year) %>% 
+    summarise(smokepm = mean(mean_pm2.5), deathrate = mean(mean_deathrate)) %>% 
+    arrange(desc(smokepm))
+
 
 #Histogram to show distribution of wfpm2.5
 options(scipen=999) #removes scientific notation for following plot

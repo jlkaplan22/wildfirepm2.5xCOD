@@ -224,6 +224,57 @@ modeler <- function(df, x, ctrls, fes, cluster) {
     return(row)
 }
 
+#### Return TWFE with specified params, adding weighting as option ####
+modeler_weighted <- function(df, x, ctrls, fes, cluster, weights) {
+    ## define the formula for the model
+    ctrls <- ifelse(ctrls != "", paste0("+", ctrls), ctrls) #need to add plus if there are controls
+    formula <- paste0(x, ctrls, "|", fes)
+    
+    if (weights == TRUE) {
+        mod <-
+            feglm(
+                as.formula(
+                    paste0("n_deaths", "~", formula)
+                ),
+                offset = log(df$pop),
+                data = df,
+                weights = df$pop,
+                family = quasipoisson,
+                cluster = cluster)
+    } else {
+        mod <-
+            feglm(
+                as.formula(
+                    paste0("n_deaths", "~", formula)
+                ),
+                offset = log(df$pop),
+                data = df,
+                family = quasipoisson,
+                cluster = cluster)
+    }
+    
+    mean_pm2.5 <- coefficients(mod)[1]
+    se_county_cluster <- fixest::se(mod)[1]
+    pval_county_cluster <- summary(mod)$coeftable[1,4]
+    se_iid <- fixest::se(mod, vcov="iid")[1]
+    pval_iid <- summary(mod, vcov="iid")$coeftable[1,4]
+    se_hetero <- fixest::se(mod, vcov="hetero")[1]
+    pval_hetero <- summary(mod, vcov="hetero")$coeftable[1,4]
+    
+    row <- 
+        c(mean_pm2.5, se_county_cluster, pval_county_cluster, 
+          se_iid, pval_iid, 
+          se_hetero, pval_hetero) %>%
+        t() %>% 
+        data.frame()
+    
+    colnames(row) <- c("mean_pm2.5", "se_county_cluster", "pval_county_cluster",
+                       "se_iid", "pval_iid",
+                       "se_hetero", "pval_hetero")
+    
+    return(row)
+}
+
 #### PRISM data download helper ####
 prism_helper <- function(year, env_var) {
     year_abb = str_sub(year, 3, 4)

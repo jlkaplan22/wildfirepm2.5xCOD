@@ -107,8 +107,8 @@ years_c <-
     ) %>% 
     pivot_longer(`2006`:`2019`, names_to="year", values_to="value")
 
-height <- .4
-width <- .5
+height <- .7
+width <- .7
 years_c_tiles <-
     years_c %>% 
     ggplot(aes(x = mod_num, y = as.factor(year) %>% fct_rev(), fill = value)) + 
@@ -124,9 +124,10 @@ years_c_tiles <-
         axis.title.y = element_blank(),
         panel.grid = element_blank(),
         plot.margin = unit(c(1,1,0,1), "cm")
-    )
+    ) +
+    coord_equal()
 
-fig3c <- coefs_c + years_c_tiles + plot_layout(ncol = 1, heights = c(5,3))
+fig3c <- coefs_c + years_c_tiles + plot_layout(ncol=1)
 ggsave(filename = "plots/fig3c.png", plot = fig3c, device = "png", dpi = 200, height = 5, width = 5)
 
 
@@ -251,7 +252,8 @@ years_d_tiles <-
         axis.title.y = element_blank(),
         panel.grid = element_blank(),
         plot.margin = unit(c(1,1,0,1), "cm")
-    )
+    ) +
+    coord_equal()
 
-fig3d <- coefs_d + years_d_tiles + plot_layout(ncol = 1, heights = c(5,3))
+fig3d <- coefs_d + years_d_tiles + plot_layout(ncol = 1)
 ggsave(filename = "plots/fig3d.png", plot = fig3d, device = "png", dpi = 200, height = 5, width = 5)
