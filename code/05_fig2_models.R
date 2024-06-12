@@ -218,9 +218,9 @@ coefs <-
     geom_linerange(aes(ymin = CI_lower_clustered_percent, ymax = CI_upper_clustered_percent), lwd=.2, color = "gray30") +
     geom_linerange(aes(ymin = CI_lower_iid_percent, ymax = CI_upper_iid_percent), lwd=.6, color = "dodgerblue3") +
     geom_point(size=.5) +
-    geom_point(data = fig2_mod_outputs %>% filter(preferred_mod==1),
-               aes(x=model_rank, y = point_est_percent),
-               color = "red", size = 1) +
+    # geom_point(data = fig2_mod_outputs %>% filter(preferred_mod==1),
+    #            aes(x=model_rank, y = point_est_percent),
+    #            color = "red", size = 1) +
     theme_minimal() +
     geom_hline(yintercept = 0, colour = DEFAULT_COLOR, lty = 2, size=0.25) + 
     ylab("% Change in Mortality Rate") +
@@ -231,14 +231,14 @@ coefs <-
         axis.title.y = element_text(size = 18),
         plot.margin = unit(c(0,1,0,1), "cm"),
         legend.position = "none"
-    ) +
-    #Spotlight the prefered model
-    annotate("rect",
-             xmin = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(model_rank) - .5,
-             xmax = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(model_rank) + .5,
-             ymin = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(CI_lower_clustered_percent) - .05,
-             ymax = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(CI_upper_clustered_percent) + .05,
-               alpha = .2)
+    )
+    #Spotlight the prefered model --2/14/24, sunsetting this
+    # annotate("rect",
+    #          xmin = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(model_rank) - .5,
+    #          xmax = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(model_rank) + .5,
+    #          ymin = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(CI_lower_clustered_percent) - .05,
+    #          ymax = fig2_mod_outputs %>% filter(preferred_mod==1) %>% pull(CI_upper_clustered_percent) + .05,
+    #            alpha = .2)
 
 
 size <- .8

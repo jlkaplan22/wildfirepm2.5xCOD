@@ -110,7 +110,6 @@ years_a_tiles <-
 fig3a <- coefs_a + years_a_tiles + plot_layout(ncol = 1)
 ggsave(filename = "plots/fig3a.png", plot = fig3a, device = "png", dpi = 200, height = 5, width = 5)
 
-
 #Fig 3b: moving 5-year window
 output_b <- as.data.frame(matrix(nrow=10, ncol=9))
 colnames(output_b) <- c("startyear", "endyear", "mean_pm2.5", 
