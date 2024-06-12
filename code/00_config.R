@@ -13,7 +13,6 @@ library(sp)
 library(raster)
 library(terra)
 library(tidycensus)
-library(USAboundaries)
 library(tigris)
 options(tigris_use_cache = TRUE) #stores data in case there are temporary issues with site
 library(purrr)
