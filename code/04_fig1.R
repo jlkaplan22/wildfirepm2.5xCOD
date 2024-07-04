@@ -28,8 +28,8 @@ map_data <-
         mean_pop = mean(pop),
         deaths_per_year = mean(n_deaths),
         mean_deathrate = mean(rate),
-        months_over_x = sum(mean_pm2.5 > .5),
-        mean_pm2.5 = mean(mean_pm2.5)
+        months_over_x = sum(popw_mean_pm2.5 > .5),
+        mean_pm2.5 = mean(popw_mean_pm2.5)
     )
 
 #deathrate_breaks <- quantile(map_data$mean_deathrate, seq(0, 1, .2))
@@ -120,7 +120,7 @@ time_series_data <-
     group_by(yearmonth) %>% 
     summarise(
         mean_deathrate = mean(rate),
-        mean_pm2.5 = mean(mean_pm2.5)
+        mean_pm2.5 = mean(popw_mean_pm2.5)
     )
 
 # Smoke PM2.5 time series
@@ -196,14 +196,14 @@ time_series_data %>%
 #Histogram to show distribution of wfpm2.5
 options(scipen=999) #removes scientific notation for following plot
 
-county_smokePM_features$breaks <- cut(county_smokePM_features$mean_pm2.5, breaks=c(0,5,10,25,50,Inf), include.lowest=TRUE)
+bothweights_county_smokePM_features$breaks <- cut(bothweights_county_smokePM_features$popw_mean_pm2.5, breaks=c(0,5,10,25,50,Inf), include.lowest=TRUE)
 
 
 hist_data <-
-    county_smokePM_features %>% 
+    bothweights_county_smokePM_features %>% 
     mutate(
-        bars = cut(mean_pm2.5, breaks=c(seq(0, 80, 5), Inf), include.lowest=TRUE),
-        groupcolors = cut(mean_pm2.5, breaks=c(0,5,10,25,50,Inf), include.lowest=TRUE)
+        bars = cut(popw_mean_pm2.5, breaks=c(seq(0, 80, 5), Inf), include.lowest=TRUE),
+        groupcolors = cut(popw_mean_pm2.5, breaks=c(0,5,10,25,50,Inf), include.lowest=TRUE)
     )
 
 legend_labels <-

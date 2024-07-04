@@ -1,6 +1,9 @@
 # ------------------------------------------------------------------------------
 # Written by: Marissa Childs (from Childs et al. 2022), modified by Jordan Kaplan
-# Aggregates 10 km grid smokePM predictions to county level.
+# Aggregates 10 km grid smokePM predictions to county level, using population-weighting,
+# and area-weighting. Note that certain steps can use a lot of memory--therefore,
+# some steps here divide the data into sections before processing. It may be
+# necessary to divide the data into more than the three subsets used here.
 # ------------------------------------------------------------------------------
 
 counties_sf <- 
@@ -41,42 +44,119 @@ smokePM <- readRDS("data_raw/smokePM_predictions_20060101_20201231.rds")
 
 # only save predictions if there's a smoke day in the unit, start by identifying smoke-days per unit
 county_smoke_days <- 
-    smokePM %>% # 51434138 rows
+    smokePM %>% # 51,434,138 rows
+    
     # add unit information, this will duplicate any rows that are in multiple counties
-    left_join(county_cross %>% dplyr::select(grid_id_10km, GEOID),
-              by = "grid_id_10km") %>% # 76009188 rows for county 
+    left_join(
+        county_cross %>% dplyr::select(grid_id_10km, GEOID),
+        by = "grid_id_10km"
+    ) %>% # 76,009,188 rows for county 
+    
     filter(!is.na(GEOID)) %>% # drop grid cells that don't match to a unit
+    
     # full set of unit-days with smoke 
     dplyr::select(date, GEOID) %>% 
-    distinct()  # 2308941 rows (should actually be less after dropping NAs)
+    
+    distinct()  # 2,308,941 rows (should actually be less after dropping NAs)
 
-county_smokePM <- 
-    county_smoke_days %>%
+#divide county_smoke_days in half to work around memory issue
+length_county_cross <- county_cross$GEOID %>% unique() %>% length()
+GEOIDs_p1 <- county_cross$GEOID %>% unique() %>% sort() %>% .[1:1000]
+GEOIDs_p2 <- county_cross$GEOID %>% unique() %>% sort() %>% .[1001:2000]
+GEOIDs_p3 <- county_cross$GEOID %>% unique() %>% sort() %>% .[2001:length_county_cross]
+
+county_smoke_days_p1 <- county_smoke_days %>% filter(GEOID %in% GEOIDs_p1)
+county_smoke_days_p2 <- county_smoke_days %>% filter(GEOID %in% GEOIDs_p2)
+county_smoke_days_p3 <- county_smoke_days %>% filter(GEOID %in% GEOIDs_p3)
+
+# split in thirds
+county_smokePM_p1 <- 
+    county_smoke_days_p1 %>% 
     # join in all grid-cells for each unit
-    left_join(county_cross, by = "GEOID") %>% # 119622779 rows
-    # join in population and smoke PM predictions
-    left_join(pop %>% dplyr::select(grid_id_10km = ID, grid_pop_per_m2 = mean)) %>%
-    left_join(smokePM) # should still be 119622779 rows
+    left_join(county_cross, by = "GEOID") %>% 
+    # join in population
+    left_join(
+        pop %>% dplyr::select(grid_id_10km = ID, grid_pop_per_m2 = mean)
+    ) %>%
+    # join in smoke predictions
+    left_join(smokePM)
 
+county_smokePM_p2 <- 
+    county_smoke_days_p2 %>% # 
+    # join in all grid-cells for each unit
+    left_join(county_cross, by = "GEOID") %>% 
+    # join in population
+    left_join(
+        pop %>% dplyr::select(grid_id_10km = ID, grid_pop_per_m2 = mean)
+    ) %>% 
+    # join in smoke predictions
+    left_join(smokePM)
+
+county_smokePM_p3 <- 
+    county_smoke_days_p3 %>% # 
+    # join in all grid-cells for each unit
+    left_join(county_cross, by = "GEOID") %>% 
+    # join in population
+    left_join(
+        pop %>% dplyr::select(grid_id_10km = ID, grid_pop_per_m2 = mean)
+    ) %>% 
+    # join in smoke predictions
+    left_join(smokePM)
 
 # fill missings with 0s
 # calculate pop-weighted avg (density * area) over grid cells in each unit
+# also calculate area-weighted avg
 # (This can take several minutes to run)
-avg_county_smokePM <- 
-    county_smokePM %>% 
+avg_county_smokePM_p1 <- 
+    county_smokePM_p1 %>%
     replace_na(list(smokePM_pred = 0)) %>%
-    mutate(area_unclassed = unclass(area), 
-           pop = grid_pop_per_m2*area_unclassed) %>%
+    mutate(
+        area_unclassed = unclass(area), 
+        pop = grid_pop_per_m2*area_unclassed
+    ) %>%
     group_by(GEOID, date) %>% 
-    summarise(smokePM_pred = weighted.mean(smokePM_pred, pop)) %>% 
+    summarise(
+        areaw_smokePM_pred = weighted.mean(smokePM_pred, area_unclassed),
+        popw_smokePM_pred = weighted.mean(smokePM_pred, pop)
+    ) %>% 
     ungroup
+
+avg_county_smokePM_p2 <- 
+    county_smokePM_p2 %>% 
+    replace_na(list(smokePM_pred = 0)) %>%
+    mutate(
+        area_unclassed = unclass(area), 
+        pop = grid_pop_per_m2*area_unclassed
+    ) %>%
+    group_by(GEOID, date) %>% 
+    summarise(
+        areaw_smokePM_pred = weighted.mean(smokePM_pred, area_unclassed),
+        popw_smokePM_pred = weighted.mean(smokePM_pred, pop)
+    ) %>% 
+    ungroup
+
+avg_county_smokePM_p3 <- 
+    county_smokePM_p3 %>% 
+    replace_na(list(smokePM_pred = 0)) %>%
+    mutate(
+        area_unclassed = unclass(area), 
+        pop = grid_pop_per_m2*area_unclassed
+    ) %>%
+    group_by(GEOID, date) %>% 
+    summarise(
+        areaw_smokePM_pred = weighted.mean(smokePM_pred, area_unclassed),
+        popw_smokePM_pred = weighted.mean(smokePM_pred, pop)
+    ) %>% 
+    ungroup
+
+avg_county_smokePM <- rbind(avg_county_smokePM_p1, avg_county_smokePM_p2, avg_county_smokePM_p3)
 
 #note--GEOID is county-specific
 saveRDS(avg_county_smokePM, 
-        "data/county_smokePM_predictions_20060101_20201231.rds")
+        "data/bothweights_county_smokePM_predictions_20060101_20201231.rds")
 
 #shortcut for once file has been saved
-#avg_county_smokePM <- readRDS("data/county_smokePM_predictions_20060101_20201231.rds")
+#avg_county_smokePM <- readRDS("data/bothweights_county_smokePM_predictions_20060101_20201231.rds")
 
 # aggregate to monthly level and create thresholding features
 county_smokePM_features <-
@@ -84,23 +164,38 @@ county_smokePM_features <-
     mutate(year = year(date), month = month(date)) %>% 
     group_by(GEOID, year, month) %>% 
     summarise(
-        cum_pm2.5 = sum(smokePM_pred),
-        mean_pm2.5 =
+        #Calculate variables for area-weighted PM2.5
+        areaw_cum_pm2.5 = sum(areaw_smokePM_pred),
+        areaw_mean_pm2.5 =
             case_when(
-                month %in% c(1, 3, 5, 7, 8, 10, 12) ~ cum_pm2.5 / 31,
-                month %in% c(4, 6, 9, 11) ~ cum_pm2.5 / 30,
-                month %in% c(2) ~ cum_pm2.5 / 28
+                month %in% c(1, 3, 5, 7, 8, 10, 12) ~ areaw_cum_pm2.5 / 31,
+                month %in% c(4, 6, 9, 11) ~ areaw_cum_pm2.5 / 30,
+                month %in% c(2) ~ areaw_cum_pm2.5 / 28
             ),
-        daysover0 = sum(smokePM_pred > 0),
-        daysover5 = sum(smokePM_pred > 5),
-        daysover12.5 = sum(smokePM_pred > 12.5),
-        daysover20 = sum(smokePM_pred > 20),
-        daysover40 = sum(smokePM_pred > 40)
+        areaw_daysover0 = sum(areaw_smokePM_pred > 0),
+        areaw_daysover5 = sum(areaw_smokePM_pred > 5),
+        areaw_daysover12.5 = sum(areaw_smokePM_pred > 12.5),
+        areaw_daysover20 = sum(areaw_smokePM_pred > 20),
+        areaw_daysover40 = sum(areaw_smokePM_pred > 40),
+        
+        #Calculate variables for population-weighted PM2.5
+        popw_cum_pm2.5 = sum(popw_smokePM_pred),
+        popw_mean_pm2.5 =
+            case_when(
+                month %in% c(1, 3, 5, 7, 8, 10, 12) ~ popw_cum_pm2.5 / 31,
+                month %in% c(4, 6, 9, 11) ~ popw_cum_pm2.5 / 30,
+                month %in% c(2) ~ popw_cum_pm2.5 / 28
+            ),
+        popw_daysover0 = sum(popw_smokePM_pred > 0),
+        popw_daysover5 = sum(popw_smokePM_pred > 5),
+        popw_daysover12.5 = sum(popw_smokePM_pred > 12.5),
+        popw_daysover20 = sum(popw_smokePM_pred > 20),
+        popw_daysover40 = sum(popw_smokePM_pred > 40)
     ) %>% 
     distinct()
 
 saveRDS(county_smokePM_features, 
-        "data/county_smokePM_features_2006_2020.rds")
+        "data/bothweights_county_smokePM_features_2006_2020.rds")
 
 
 

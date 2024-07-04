@@ -14,13 +14,15 @@ for (i in 1:11) {
         final %>% 
         filter(year <= indexyear)
     
-    controls <- "ns(weighted_temp, df=3) + weighted_precip"
-    fes <- "fipsihme^month + year"
+    #controls <- "ns(weighted_temp, df=3) + weighted_precip"
+    controls <- ""
+    
+    fes <- "fipsihme + yearmonth"
     
     output_a[i,] <- 
         c(
             "2006", indexyear,
-            modeler(year_restricted_df, "mean_pm2.5", controls, fes, year_restricted_df$fipsihme)
+            modeler(year_restricted_df, "popw_mean_pm2.5", controls, fes, year_restricted_df$fipsihme)
         )
 }
 
@@ -52,7 +54,7 @@ coefs_a <-
     fig3a_mod_outputs %>% 
     ggplot(aes(x = mod_num, y = point_est_percent)) + 
     geom_linerange(aes(ymin = CI_lower_clustered_percent, ymax = CI_upper_clustered_percent), lwd=.2) +
-    geom_linerange(aes(ymin = CI_lower_iid_percent, ymax = CI_upper_iid_percent), lwd=.6, color = "cornflowerblue") +
+    #geom_linerange(aes(ymin = CI_lower_iid_percent, ymax = CI_upper_iid_percent), lwd=.6, color = "cornflowerblue") +
     geom_point(size=.5) +
     theme_minimal() +
     ylab("% Change in Mortality Rate") +
@@ -129,13 +131,14 @@ for (i in 1:(2020-2006-range)) {
         final %>% 
         filter(year >= startyear, year <= endyear)
     
-    controls <- "ns(weighted_temp, df=3) + weighted_precip"
+    #controls <- "ns(weighted_temp, df=3) + weighted_precip"
+    controls <- ""
     fes <- "fipsihme^month + year"
     
     output_b[i,] <- 
         c(
             startyear, endyear,
-            modeler(year_restricted_df, "mean_pm2.5", controls, fes, year_restricted_df$fipsihme)
+            modeler(year_restricted_df, "popw_mean_pm2.5", controls, fes, year_restricted_df$fipsihme)
         )
 }
 
@@ -167,7 +170,7 @@ coefs_b <-
     fig3b_mod_outputs %>% 
     ggplot(aes(x = year_range, y = point_est_percent)) + 
     geom_linerange(aes(ymin = CI_lower_clustered_percent, ymax = CI_upper_clustered_percent), lwd=.2) +
-    geom_linerange(aes(ymin = CI_lower_iid_percent, ymax = CI_upper_iid_percent), lwd=.6, color = "cornflowerblue") +
+    #geom_linerange(aes(ymin = CI_lower_iid_percent, ymax = CI_upper_iid_percent), lwd=.6, color = "cornflowerblue") +
     geom_point(size=.5) +
     ylab("% Change in Mortality Rate") +
     theme_minimal() +
@@ -222,3 +225,6 @@ years_b_tiles <-
 
 fig3b <- coefs_b + years_b_tiles + plot_layout(ncol = 1)
 ggsave(filename = "plots/fig3b.png", plot = fig3b, device = "png", dpi = 200, height = 5, width = 5)
+
+fig3_combined <- coefs_a + coefs_b + years_a_tiles + years_b_tiles + plot_layout(ncol = 2, nrow = 2)
+ggsave(filename = "plots/fig3_total.png", plot = fig3_combined, device = "png", dpi = 200, height = 5, width = 7)
